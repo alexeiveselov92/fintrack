@@ -123,31 +123,21 @@ fixed_expenses:
   - name: "utilities"
     amount: 150.00
     category: "utilities"
-  - name: "internet"
-    amount: 30.00
-    category: "subscriptions"
 
 # Savings settings
 savings_rate: 0.20  # 20%
 savings_base: "net_income"  # or "disposable"
 
-# Category budgets
+# Category budgets for flexible spending
 category_budgets:
-  # Fixed categories
-  - category: "housing"
-    amount: 800.00
-    is_fixed: true
-  - category: "utilities"
-    amount: 150.00
-    is_fixed: true
-
-  # Flexible categories
   - category: "food"
     amount: 400.00
   - category: "transport"
     amount: 150.00
   - category: "entertainment"
     amount: 150.00
+# Tip: Add is_fixed: true to a category if you want transactions
+# in that category to be auto-classified as fixed expenses
 '''
 
 

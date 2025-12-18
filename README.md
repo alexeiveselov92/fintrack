@@ -89,9 +89,6 @@ id: "december_2024"
 # When this plan becomes active
 valid_from: "2024-12-01"
 
-# Optional: when this plan expires (if not set, valid until next plan)
-# valid_to: "2024-12-31"
-
 # Your gross monthly income (before any deductions)
 gross_income: 5000.00
 income_currency: "EUR"
@@ -111,12 +108,6 @@ fixed_expenses:
   - name: "utilities"
     amount: 150.00
     category: "utilities"
-  - name: "internet"
-    amount: 30.00
-    category: "utilities"
-  - name: "phone"
-    amount: 20.00
-    category: "utilities"
 
 # Savings goal as percentage (0.20 = 20%)
 savings_rate: 0.20
@@ -124,14 +115,8 @@ savings_rate: 0.20
 # Calculate savings from: "net_income" or "disposable_income"
 savings_base: "net_income"
 
-# Budget limits per category (for variable expenses)
+# Budget limits per category (for flexible spending)
 category_budgets:
-  - category: "housing"
-    amount: 800.00
-    is_fixed: true
-  - category: "utilities"
-    amount: 200.00
-    is_fixed: true
   - category: "food"
     amount: 400.00
   - category: "transport"
