@@ -35,19 +35,17 @@ Gross Income
 
 ## Installation
 
-### Option 1: From PyPI (when available)
-
 ```bash
 pip install fintrack-cli
 ```
 
-### Option 2: From GitHub
+### Alternative: From GitHub (latest development version)
 
 ```bash
 pip install git+https://github.com/alexeiveselov92/fintrack.git
 ```
 
-### Option 3: Local Development
+### Alternative: Local Development
 
 ```bash
 git clone https://github.com/alexeiveselov92/fintrack.git
