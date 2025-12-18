@@ -179,6 +179,30 @@ class TestBudgetPlan:
                 savings_rate=Decimal("1.5"),  # > 1
             )
 
+    def test_savings_amount_overrides_rate(self) -> None:
+        """Test savings_amount takes priority over savings_rate."""
+        plan = BudgetPlan(
+            id="test",
+            valid_from=date(2024, 1, 1),
+            gross_income=Decimal("5000.00"),
+            savings_rate=Decimal("0.20"),  # Would be 1000 from 5000
+            savings_amount=Decimal("500.00"),  # But this takes priority
+        )
+        assert plan.savings_target == Decimal("500.00")
+        assert plan.disposable_income == Decimal("4500.00")  # 5000 - 500
+
+    def test_savings_amount_none_uses_rate(self) -> None:
+        """Test savings_rate is used when savings_amount is None."""
+        plan = BudgetPlan(
+            id="test",
+            valid_from=date(2024, 1, 1),
+            gross_income=Decimal("5000.00"),
+            savings_rate=Decimal("0.10"),
+            savings_amount=None,  # Explicit None
+        )
+        # 5000 * 0.10 = 500
+        assert plan.savings_target == Decimal("500.00")
+
 
 class TestExchangeRate:
     """Tests for ExchangeRate model."""

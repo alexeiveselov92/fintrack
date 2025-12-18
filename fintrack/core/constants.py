@@ -124,9 +124,10 @@ fixed_expenses:
     amount: 150.00
     category: "utilities"
 
-# Savings settings
-savings_rate: 0.20  # 20%
-savings_base: "net_income"  # or "disposable"
+# Savings: specify rate OR fixed amount
+savings_rate: 0.20  # 20% of savings_base
+savings_base: "net_income"  # or "disposable_income"
+# savings_amount: 500.00  # Or fixed amount (takes priority over rate)
 
 # Category budgets for flexible spending
 category_budgets:

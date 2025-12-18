@@ -109,11 +109,10 @@ fixed_expenses:
     amount: 150.00
     category: "utilities"
 
-# Savings goal as percentage (0.20 = 20%)
-savings_rate: 0.20
-
-# Calculate savings from: "net_income" or "disposable_income"
-savings_base: "net_income"
+# Savings: specify rate OR fixed amount
+savings_rate: 0.20  # 20% of savings_base
+savings_base: "net_income"  # or "disposable_income"
+# savings_amount: 500.00  # Or fixed amount (takes priority over rate)
 
 # Budget limits per category (for flexible spending)
 category_budgets:

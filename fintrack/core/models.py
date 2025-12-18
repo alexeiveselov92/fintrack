@@ -160,6 +160,7 @@ class BudgetPlan(BaseModel):
 
     savings_rate: Annotated[Decimal, Field(ge=0, le=1)] = Decimal("0.20")
     savings_base: SavingsBase = SavingsBase.NET_INCOME
+    savings_amount: Annotated[Decimal, Field(ge=0)] | None = None  # Fixed amount (priority over rate)
 
     category_budgets: list[CategoryBudget] = Field(default_factory=list)
 
@@ -194,6 +195,8 @@ class BudgetPlan(BaseModel):
     @property
     def savings_target(self) -> Decimal:
         """Target savings amount for the period."""
+        if self.savings_amount is not None:
+            return self.savings_amount
         return self.savings_calculation_base * self.savings_rate
 
     @computed_field  # type: ignore[misc]
