@@ -18,12 +18,11 @@ console = Console()
 
 
 def import_command(
-    path: Path = typer.Argument(
-        ...,
-        help="CSV file or directory to import",
-        exists=True,
+    path: Path | None = typer.Argument(
+        None,
+        help="CSV file or directory to import (default: transactions_dir from workspace)",
     ),
-    workspace: Path = typer.Option(
+    workspace: Path | None = typer.Option(
         None,
         "--workspace",
         "-w",
@@ -45,6 +44,9 @@ def import_command(
     """Import transactions from CSV files.
 
     Imports transactions from a CSV file or all CSV files in a directory.
+    If no path is specified, imports from the transactions_dir configured
+    in workspace.yaml (default: transactions/).
+
     Uses file hashing to ensure idempotent imports - the same file
     won't be imported twice unless --force is used.
 
@@ -58,6 +60,15 @@ def import_command(
             "[red]Error:[/red] No workspace found. "
             "Run 'fintrack init <name>' or use --workspace"
         )
+        raise typer.Exit(1)
+
+    # Resolve path - use transactions_dir from workspace if not specified
+    if path is None:
+        path = ws.path / ws.config.transactions_dir
+        console.print(f"Using default transactions directory: {path}\n")
+
+    if not path.exists():
+        console.print(f"[red]Error:[/red] Path '{path}' does not exist")
         raise typer.Exit(1)
 
     # Get storage repositories

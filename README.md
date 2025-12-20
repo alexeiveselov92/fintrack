@@ -172,7 +172,7 @@ date,amount,currency,category,description,is_savings,is_deduction,is_fixed
 Import the transactions:
 
 ```bash
-fintrack import transactions/
+fintrack import
 ```
 
 Output:
@@ -331,19 +331,22 @@ Validate workspace configuration and budget plans.
 fintrack validate
 ```
 
-### `fintrack import <path>`
+### `fintrack import [path]`
 
 Import transactions from CSV file(s).
 
 ```bash
+# Import from default transactions/ directory
+fintrack import
+
 # Import single file
 fintrack import transactions/december.csv
 
-# Import all files in directory
-fintrack import transactions/
+# Import from custom directory
+fintrack import custom/path/
 
 # Force re-import (ignore duplicates check)
-fintrack import transactions/ --force
+fintrack import --force
 ```
 
 ### `fintrack budget`
