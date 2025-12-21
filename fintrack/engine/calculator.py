@@ -131,17 +131,17 @@ def aggregate_transactions(
             last_date = tx.date
 
         # Handle by type
-        if tx.amount > 0 and not tx.is_deduction:
-            # Income
-            total_income += tx.amount
+        if tx.is_savings:
+            # Savings transfer (positive = deposit, negative = withdrawal)
+            total_savings += tx.amount
 
         elif tx.is_deduction:
             # Deduction from gross
             total_deductions += abs(tx.amount)
 
-        elif tx.is_savings:
-            # Savings transfer
-            total_savings += abs(tx.amount)
+        elif tx.amount > 0:
+            # Income
+            total_income += tx.amount
 
         else:
             # Expense

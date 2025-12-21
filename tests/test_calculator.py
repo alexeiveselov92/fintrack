@@ -401,7 +401,7 @@ class TestAggregateTransactions:
         transactions = [
             Transaction(
                 date=date(2024, 1, 15),
-                amount=Decimal("-500.00"),
+                amount=Decimal("500.00"),  # Deposited to savings
                 category="savings",
                 is_savings=True,
             ),
@@ -419,3 +419,30 @@ class TestAggregateTransactions:
         )
         assert summary.total_savings == Decimal("500.00")
         assert summary.total_expenses == Decimal("100.00")
+        assert summary.total_income == Decimal("0")  # Savings deposit is not income
+
+    def test_savings_deposits_and_withdrawals(self) -> None:
+        """Test that savings deposits and withdrawals are summed correctly."""
+        transactions = [
+            Transaction(
+                date=date(2024, 1, 10),
+                amount=Decimal("5000.00"),  # Deposited to savings
+                category="savings",
+                is_savings=True,
+            ),
+            Transaction(
+                date=date(2024, 1, 15),
+                amount=Decimal("-450.00"),  # Withdrew from savings
+                category="savings",
+                is_savings=True,
+            ),
+        ]
+        summary = aggregate_transactions(
+            transactions=transactions,
+            period_start=date(2024, 1, 1),
+            period_end=date(2024, 2, 1),
+            workspace_name="test",
+        )
+        # 5000 - 450 = 4550 net saved
+        assert summary.total_savings == Decimal("4550.00")
+        assert summary.total_income == Decimal("0")  # Savings are not income
