@@ -17,6 +17,7 @@ from fintrack.core.models import (
 )
 from fintrack.engine.calculator import (
     aggregate_transactions,
+    calculate_cumulative_balance,
     calculate_cumulative_savings,
     calculate_variance,
 )
@@ -58,10 +59,11 @@ def get_period_summary(
         fixed_categories=fixed_categories,
     )
 
-    # Calculate cumulative savings up to period end (exclusive, so last day of period)
+    # Calculate cumulative values up to period end (exclusive, so last day of period)
     txns_for_cumulative = all_transactions if all_transactions is not None else transactions
     last_day_of_period = period_end - timedelta(days=1)
     summary.cumulative_savings = calculate_cumulative_savings(txns_for_cumulative, last_day_of_period)
+    summary.cumulative_balance = calculate_cumulative_balance(txns_for_cumulative, last_day_of_period)
 
     return summary
 

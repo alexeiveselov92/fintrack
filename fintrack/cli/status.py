@@ -151,24 +151,27 @@ def status_command(
             warnings.append(f"Flexible spending over budget by {format_currency(abs(remaining), currency)}")
         console.print()
 
-    # Savings progress
+    # Savings & Cumulative
+    console.print("[bold]Savings & Balance[/bold]")
     if plan and plan.savings_target > 0:
-        console.print("[bold]Savings Progress[/bold]")
         saved = summary.total_savings
         target = plan.savings_target
         pct = (saved / target * 100) if target > 0 else Decimal(0)
-
-        console.print(f"  Target:       {format_currency(target, currency):>12}")
-        console.print(f"  Saved:        {format_currency(saved, currency):>12}  ({pct:.1f}%)")
-        console.print(f"  Cumulative:   {format_currency(summary.cumulative_savings, currency):>12}")
-
+        console.print(f"  Target:              {format_currency(target, currency):>12}")
+        console.print(f"  Saved (period):      {format_currency(saved, currency):>12}  ({pct:.1f}%)")
         if pct >= 100:
             console.print("  [green]✓ Target reached![/green]")
         elif days_left == 0:
             shortfall = target - saved
             console.print(f"  [red]Shortfall: {format_currency(shortfall, currency)}[/red]")
             warnings.append(f"Savings target missed by {format_currency(shortfall, currency)}")
-        console.print()
+    else:
+        console.print(f"  Saved (period):      {format_currency(summary.total_savings, currency):>12}")
+
+    # Always show cumulative values
+    console.print(f"  Cumulative Savings:  {format_currency(summary.cumulative_savings, currency):>12}")
+    console.print(f"  Cumulative Balance:  {format_currency(summary.cumulative_balance, currency):>12}")
+    console.print()
 
     # Category breakdown (top spenders)
     if summary.expenses_by_category:

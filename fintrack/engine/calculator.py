@@ -225,14 +225,44 @@ def calculate_cumulative_savings(
     Sums all is_savings=True transactions from the start of time
     up to and including the specified date.
 
+    Sign convention:
+        - Positive amount = money deposited to savings
+        - Negative amount = money withdrawn from savings
+
     Args:
         transactions: All transactions to consider.
         up_to_date: End date (inclusive) for calculation.
 
     Returns:
-        Total cumulative savings amount.
+        Total cumulative savings amount (can be negative if more withdrawn than deposited).
     """
     return sum(
-        (abs(tx.amount) for tx in transactions if tx.is_savings and tx.date <= up_to_date),
+        (tx.amount for tx in transactions if tx.is_savings and tx.date <= up_to_date),
         Decimal(0),
     )
+
+
+def calculate_cumulative_balance(
+    transactions: list[Transaction],
+    up_to_date: date,
+) -> Decimal:
+    """Calculate cumulative balance (income - expenses) excluding savings transactions.
+
+    This shows how much "cash flow" money has accumulated over time,
+    ignoring savings transfers which are tracked separately.
+
+    Args:
+        transactions: All transactions to consider.
+        up_to_date: End date (inclusive) for calculation.
+
+    Returns:
+        Cumulative balance (positive = surplus, negative = deficit).
+    """
+    balance = Decimal(0)
+    for tx in transactions:
+        if tx.date > up_to_date:
+            continue
+        if tx.is_savings:
+            continue  # Exclude savings transfers
+        balance += tx.amount  # Income positive, expenses negative
+    return balance

@@ -252,15 +252,16 @@ def analyze_command(
         console.print(table)
         console.print()
 
-    # Savings
-    console.print("[bold]Savings[/bold]")
-    if plan:
-        console.print(f"  Target:       {format_currency(plan.savings_target, currency):>12}")
-    console.print(f"  Actual:       {format_currency(summary.total_savings, currency):>12}")
-    console.print(f"  Cumulative:   {format_currency(summary.cumulative_savings, currency):>12}")
+    # Savings & Cumulative
+    console.print("[bold]Savings & Balance[/bold]")
     if plan and plan.savings_target > 0:
+        console.print(f"  Target:              {format_currency(plan.savings_target, currency):>12}")
         achievement = (summary.total_savings / plan.savings_target * 100)
-        console.print(f"  Achievement: {achievement:.1f}%")
+        console.print(f"  Saved (period):      {format_currency(summary.total_savings, currency):>12}  ({achievement:.1f}%)")
+    else:
+        console.print(f"  Saved (period):      {format_currency(summary.total_savings, currency):>12}")
+    console.print(f"  Cumulative Savings:  {format_currency(summary.cumulative_savings, currency):>12}")
+    console.print(f"  Cumulative Balance:  {format_currency(summary.cumulative_balance, currency):>12}")
     console.print()
 
     # Summary
