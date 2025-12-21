@@ -44,6 +44,15 @@ class TransactionRepository(ABC):
         ...
 
     @abstractmethod
+    def get_all(self) -> list[Transaction]:
+        """Get all transactions.
+
+        Returns:
+            List of all transactions ordered by date.
+        """
+        ...
+
+    @abstractmethod
     def get_by_period(self, start: date, end: date) -> list[Transaction]:
         """Get all transactions within a date range.
 

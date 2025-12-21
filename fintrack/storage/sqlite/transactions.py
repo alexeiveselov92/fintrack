@@ -94,6 +94,15 @@ class SQLiteTransactionRepository(TransactionRepository):
         except sqlite3.Error as e:
             raise StorageError("save_batch", str(e))
 
+    def get_all(self) -> list[Transaction]:
+        """Get all transactions."""
+        sql = "SELECT * FROM transactions ORDER BY date, created_at"
+        try:
+            rows = self.db.execute(sql)
+            return [self._row_to_transaction(row) for row in rows]
+        except sqlite3.Error as e:
+            raise StorageError("get_all", str(e))
+
     def get_by_period(self, start: date, end: date) -> list[Transaction]:
         """Get transactions within a date range."""
         sql = """
