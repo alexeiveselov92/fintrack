@@ -73,13 +73,12 @@ def report_command(
         period_start, ws.config.interval, ws.config.custom_interval_days
     )
 
-    # Get plan
+    # Get plan (currency always from workspace config)
+    currency = ws.config.base_currency
     try:
         plan = ws.get_plan_for_date(period_start)
-        currency = plan.income_currency
     except NoPlanFoundError:
         plan = None
-        currency = ws.config.base_currency
 
     # Get transactions
     tx_repo = ws.storage.get_transaction_repository()

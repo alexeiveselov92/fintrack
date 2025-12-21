@@ -56,6 +56,14 @@ def parse_transaction_row(
 
     Raises:
         ImportError: If row data is invalid.
+
+    CSV Format (v0.2.0+):
+        Required: date, amount, category
+        Optional: description, original_amount, original_currency,
+                  is_savings, is_deduction, is_fixed
+
+        Note: 'amount' is always in workspace base_currency.
+              Use original_amount/original_currency for reference if needed.
     """
     try:
         # Parse required fields
@@ -81,17 +89,36 @@ def parse_transaction_row(
                 source_file, f"Invalid amount: {amount_str}", line_number
             )
 
-        currency = row.get("currency", "EUR").strip().upper()
-        if len(currency) != 3:
-            raise ImportError(
-                source_file, f"Invalid currency code: {currency}", line_number
-            )
-
         category = row.get("category", "").strip()
         if not category:
             raise ImportError(source_file, "Missing category", line_number)
 
-        # Parse optional fields
+        # Parse optional original currency info
+        original_amount: Decimal | None = None
+        original_currency: str | None = None
+
+        original_amount_str = row.get("original_amount", "").strip()
+        if original_amount_str:
+            try:
+                original_amount = Decimal(original_amount_str)
+            except InvalidOperation:
+                raise ImportError(
+                    source_file,
+                    f"Invalid original_amount: {original_amount_str}",
+                    line_number,
+                )
+
+        original_currency_str = row.get("original_currency", "").strip().upper()
+        if original_currency_str:
+            if len(original_currency_str) != 3:
+                raise ImportError(
+                    source_file,
+                    f"Invalid original_currency code: {original_currency_str}",
+                    line_number,
+                )
+            original_currency = original_currency_str
+
+        # Parse other optional fields
         description = row.get("description", "").strip() or None
         is_savings = parse_bool(row.get("is_savings", ""))
         is_deduction = parse_bool(row.get("is_deduction", ""))
@@ -108,7 +135,8 @@ def parse_transaction_row(
         return Transaction(
             date=tx_date,
             amount=amount,
-            currency=currency,
+            original_amount=original_amount,
+            original_currency=original_currency,
             category=category,
             description=description,
             is_savings=is_savings,
@@ -163,6 +191,17 @@ def read_transactions_csv(file_path: Path) -> Iterator[Transaction]:
             if missing:
                 raise ImportError(
                     str(file_path), f"Missing required columns: {missing}"
+                )
+
+            # Check for deprecated 'currency' column (breaking change in v0.2.0)
+            if "currency" in fieldnames_lower:
+                raise ImportError(
+                    str(file_path),
+                    "CSV format has changed in v0.2.0. The 'currency' column is no longer "
+                    "supported. Please update your CSV:\n"
+                    "  - Remove 'currency' column\n"
+                    "  - 'amount' should be in workspace base_currency\n"
+                    "  - Optionally add 'original_amount' and 'original_currency' for reference",
                 )
 
             # Normalize fieldnames (lowercase, stripped)

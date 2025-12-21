@@ -280,19 +280,20 @@ CALCULATION:
 ┌─────────────────────────────────────────────────────────────────┐
 │ TABLE: transactions                                             │
 ├─────────────────────────────────────────────────────────────────┤
-│ id            TEXT PRIMARY KEY  (UUID)                          │
-│ date          TEXT              (YYYY-MM-DD)                    │
-│ amount        TEXT              (Decimal as string)             │
-│ currency      TEXT              (EUR, USD, etc.)                │
-│ category      TEXT                                              │
-│ description   TEXT                                              │
-│ is_savings    INTEGER           (0 or 1)                        │
-│ is_deduction  INTEGER           (0 or 1)                        │
-│ is_fixed      INTEGER           (0 or 1)                        │
-│ source_file   TEXT              (original CSV path)             │
-│ created_at    TEXT              (ISO timestamp)                 │
+│ id                TEXT PRIMARY KEY  (UUID)                      │
+│ date              TEXT              (YYYY-MM-DD)                │
+│ amount            TEXT              (Decimal in base_currency)  │
+│ original_amount   TEXT              (Decimal, optional)         │
+│ original_currency TEXT              (ISO 4217, optional)        │
+│ category          TEXT                                          │
+│ description       TEXT                                          │
+│ is_savings        INTEGER           (0 or 1)                    │
+│ is_deduction      INTEGER           (0 or 1)                    │
+│ is_fixed          INTEGER           (0 or 1)                    │
+│ source_file       TEXT              (original CSV path)         │
+│ created_at        TEXT              (ISO timestamp)             │
 ├─────────────────────────────────────────────────────────────────┤
-│ UNIQUE(date, amount, currency, category, description)          │
+│ UNIQUE(date, amount, category, description)                     │
 └─────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────┐
@@ -397,28 +398,21 @@ fintrack cache reset <file>
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                         CURRENCY CONVERSION                                  │
-│                           (rates.yaml)                                       │
+│                         CURRENCY HANDLING                                    │
+│                                                                              │
+│  FinTrack uses a single base_currency for all calculations.                 │
+│  Set in workspace.yaml: base_currency: "EUR"                                │
+│                                                                              │
+│  Transaction amounts are ALWAYS stored in base_currency.                    │
+│  Original values can be recorded in optional fields:                        │
+│    - original_amount: the amount before conversion                          │
+│    - original_currency: the original currency code                          │
+│                                                                              │
+│  Example CSV:                                                                │
+│    date,amount,category,description,original_amount,original_currency       │
+│    2024-12-10,-92.00,food,Restaurant abroad,-100.00,USD                     │
+│                                                                              │
+│  The user is responsible for currency conversion before import.             │
+│                                                                              │
 └─────────────────────────────────────────────────────────────────────────────┘
-
-rates.yaml:
-┌────────────────────────────────────┐
-│ base_currency: "EUR"               │
-│ rates:                             │
-│   USD: 0.92   # 1 USD = 0.92 EUR   │
-│   GBP: 1.17   # 1 GBP = 1.17 EUR   │
-│   RSD: 0.0085 # 1 RSD = 0.0085 EUR │
-└────────────────────────────────────┘
-
-Conversion:
-┌─────────────────────────────────────────────────────────────────┐
-│                                                                 │
-│  Transaction: 100 USD                                           │
-│                                                                 │
-│  To base currency (EUR):                                        │
-│    100 USD × 0.92 = 92.00 EUR                                   │
-│                                                                 │
-│  All aggregations use base currency for consistency             │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
 ```

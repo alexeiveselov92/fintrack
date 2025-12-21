@@ -117,8 +117,9 @@ Gross Income
 class Transaction(BaseModel):
     id: UUID = Field(default_factory=uuid4)
     date: date
-    amount: Decimal  # положительное = доход, отрицательное = расход
-    currency: str  # ISO 4217: EUR, RSD, USD
+    amount: Decimal  # всегда в base_currency (положительное = доход, отрицательное = расход)
+    original_amount: Decimal | None = None  # оригинальная сумма если была другая валюта
+    original_currency: str | None = None  # оригинальная валюта ISO 4217 (опционально)
     category: str  # произвольная строка
     description: str | None = None
     is_savings: bool = False  # транзакция откладывания в сбережения
@@ -134,7 +135,7 @@ class Transaction(BaseModel):
 - `is_savings` может сочетаться с другими флагами, но обычно используется отдельно.
 - Обычная транзакция (все флаги = false) считается гибким расходом/доходом.
 
-Поле `amount` использует знак для определения направления: отрицательные значения означают расход, положительные — доход. Это обеспечивает простоту арифметических операций при агрегации.
+Поле `amount` использует знак для определения направления: отрицательные значения означают расход, положительные — доход. Это обеспечивает простоту арифметических операций при агрегации. **Важно:** `amount` всегда в `base_currency` из `workspace.yaml`. Если транзакция была в другой валюте, оригинальные значения можно сохранить в `original_amount` и `original_currency` для справки.
 
 Поле `category` принимает произвольные строки, поскольку ответственность за качество категоризации лежит на инструменте ввода транзакций (который не входит в MVP). При этом категории, используемые в BudgetPlan, служат ориентиром для пользователя.
 
@@ -171,10 +172,10 @@ class BudgetPlan(BaseModel):
     id: str  # уникальный идентификатор плана
     valid_from: date
     valid_to: date | None = None  # None означает "действует бессрочно"
-    
+
+    # Все суммы в base_currency из workspace.yaml
     gross_income: Decimal
-    income_currency: str = "EUR"
-    
+
     # Вычеты из gross income (налоги, страховки)
     deductions: list[DeductionItem] = []
     
@@ -388,8 +389,8 @@ id: "plan_2024_01"
 valid_from: "2024-01-01"
 valid_to: null  # действует до следующего плана
 
+# Все суммы в base_currency из workspace.yaml
 gross_income: 5000.00
-income_currency: "EUR"
 
 # Вычеты из gross income (до получения денег)
 deductions:
@@ -540,7 +541,7 @@ class TransactionRepository(ABC):
     def get_by_category(self, category: str, start: date | None = None, end: date | None = None) -> list[Transaction]: ...
     
     @abstractmethod
-    def exists(self, date: date, amount: Decimal, currency: str, category: str, description: str | None) -> bool: ...
+    def exists(self, date: date, amount: Decimal, category: str, description: str | None) -> bool: ...
 
 class CacheRepository(ABC):
     @abstractmethod

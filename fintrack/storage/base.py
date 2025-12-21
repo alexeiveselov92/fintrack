@@ -80,16 +80,16 @@ class TransactionRepository(ABC):
         self,
         tx_date: date,
         amount: Decimal,
-        currency: str,
         category: str,
         description: str | None,
     ) -> bool:
         """Check if a transaction already exists (for deduplication).
 
+        Note: Currency is no longer part of uniqueness check (v0.2.0+).
+
         Args:
             tx_date: Transaction date.
-            amount: Transaction amount.
-            currency: Currency code.
+            amount: Transaction amount (in base_currency).
             category: Category name.
             description: Optional description.
 

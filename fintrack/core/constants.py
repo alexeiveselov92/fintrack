@@ -43,21 +43,23 @@ PERIOD_FILE_PATTERNS: dict[str, str] = {
 }
 
 # -----------------------------------------------------------------------------
-# CSV Column Names
+# CSV Column Names (v0.2.0+)
+# Note: 'currency' column is deprecated - use original_amount/original_currency
 # -----------------------------------------------------------------------------
 
 CSV_COLUMNS = [
     "date",
-    "amount",
-    "currency",
+    "amount",  # Always in workspace base_currency
     "category",
     "description",
+    "original_amount",  # Optional: original amount if different currency
+    "original_currency",  # Optional: original currency code
     "is_savings",
     "is_deduction",
     "is_fixed",
 ]
 
-CSV_REQUIRED_COLUMNS = ["date", "amount", "currency", "category"]
+CSV_REQUIRED_COLUMNS = ["date", "amount", "category"]
 
 # -----------------------------------------------------------------------------
 # Supported Currencies
@@ -105,8 +107,8 @@ def get_example_plan_yaml() -> str:
 valid_from: "2024-01-01"
 valid_to: null
 
+# All amounts are in workspace base_currency (set in workspace.yaml)
 gross_income: 5000.00
-income_currency: "EUR"
 
 # Deductions from gross income (before you receive money)
 deductions:
@@ -160,14 +162,18 @@ def get_example_rates_yaml() -> str:
 
 
 def get_example_csv() -> str:
-    """Generate example transactions CSV content."""
-    return '''date,amount,currency,category,description,is_savings,is_deduction,is_fixed
-2024-01-01,-800.00,EUR,housing,Monthly rent,,,true
-2024-01-02,-45.50,EUR,food,Grocery store,,,
-2024-01-03,-30.00,EUR,subscriptions,Internet,,,true
-2024-01-05,-12.00,EUR,transport,Bus ticket,,,
-2024-01-10,5000.00,EUR,salary,January salary,,,
-2024-01-10,-1000.00,EUR,tax,Income tax,,true,
-2024-01-15,-500.00,EUR,savings,Monthly savings,true,,
-2024-01-20,-85.00,EUR,entertainment,Concert tickets,,,
+    """Generate example transactions CSV content.
+
+    Note: 'amount' is always in workspace base_currency.
+    Use original_amount/original_currency to record original values if needed.
+    """
+    return '''date,amount,category,description,is_savings,is_deduction,is_fixed
+2024-01-01,-800.00,housing,Monthly rent,,,true
+2024-01-02,-45.50,food,Grocery store,,,
+2024-01-03,-30.00,subscriptions,Internet,,,true
+2024-01-05,-12.00,transport,Bus ticket,,,
+2024-01-10,5000.00,salary,January salary,,,
+2024-01-10,-1000.00,tax,Income tax,,true,
+2024-01-15,-500.00,savings,Monthly savings,true,,
+2024-01-20,-85.00,entertainment,Concert tickets,,,
 '''

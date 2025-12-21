@@ -183,14 +183,15 @@ def list_plans(
     table.add_column("Net Income", justify="right")
     table.add_column("Disposable", justify="right")
 
+    currency = ws.config.base_currency
     for plan in plans:
         table.add_row(
             plan.id,
             str(plan.valid_from),
             str(plan.valid_to) if plan.valid_to else "ongoing",
-            format_currency(plan.gross_income, plan.income_currency),
-            format_currency(plan.net_income, plan.income_currency),
-            format_currency(plan.disposable_income, plan.income_currency),
+            format_currency(plan.gross_income, currency),
+            format_currency(plan.net_income, currency),
+            format_currency(plan.disposable_income, currency),
         )
 
     console.print(table)

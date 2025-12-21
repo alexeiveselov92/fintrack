@@ -52,8 +52,9 @@ class Transaction(BaseModel):
     Attributes:
         id: Unique identifier (auto-generated UUID).
         date: Transaction date.
-        amount: Positive = income, negative = expense.
-        currency: ISO 4217 currency code (EUR, USD, RSD).
+        amount: Amount in workspace base_currency (for calculations).
+        original_amount: Original amount if different currency (optional).
+        original_currency: Original currency code if different from base (optional).
         category: User-defined category string.
         description: Optional transaction description.
         is_savings: True if this is a savings deposit (tracked separately).
@@ -66,12 +67,20 @@ class Transaction(BaseModel):
         - is_deduction and is_fixed are mutually exclusive.
         - is_savings can combine with others but typically used alone.
         - All flags False = flexible expense/income.
+
+    Currency Handling:
+        - amount is ALWAYS in workspace base_currency.
+        - original_amount/original_currency store the original values if different.
+        - If transaction was in base_currency, original_* fields are None.
     """
 
     id: UUID = Field(default_factory=uuid4)
     date: date
-    amount: Decimal
-    currency: str = Field(min_length=3, max_length=3, pattern=r"^[A-Z]{3}$")
+    amount: Decimal  # Always in workspace base_currency
+    original_amount: Decimal | None = None  # Original amount if different currency
+    original_currency: str | None = Field(
+        default=None, min_length=3, max_length=3, pattern=r"^[A-Z]{3}$"
+    )
     category: str = Field(min_length=1)
     description: str | None = None
     is_savings: bool = False
@@ -150,10 +159,8 @@ class BudgetPlan(BaseModel):
     valid_from: date
     valid_to: date | None = None  # None = valid until next plan
 
+    # All amounts are in workspace base_currency
     gross_income: Annotated[Decimal, Field(ge=0)]
-    income_currency: str = Field(
-        default="EUR", min_length=3, max_length=3, pattern=r"^[A-Z]{3}$"
-    )
 
     deductions: list[DeductionItem] = Field(default_factory=list)
     fixed_expenses: list[FixedExpenseItem] = Field(default_factory=list)

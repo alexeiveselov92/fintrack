@@ -68,13 +68,12 @@ def status_command(
 
     period_str = format_period(period_start, ws.config.interval)
 
-    # Get plan if available
+    # Get plan if available (currency always from workspace config)
+    currency = ws.config.base_currency
     try:
         plan = ws.get_plan_for_date(period_start)
-        currency = plan.income_currency
     except NoPlanFoundError:
         plan = None
-        currency = ws.config.base_currency
 
     # Get transactions
     tx_repo = ws.storage.get_transaction_repository()

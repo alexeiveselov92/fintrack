@@ -7,14 +7,20 @@ from typing import Iterator
 
 from fintrack.core.exceptions import StorageError
 
+# Schema version - increment when schema changes
+SCHEMA_VERSION = 2  # v0.2.0: removed currency, added original_amount/original_currency
+
 # SQL schema for FinTrack tables
 SCHEMA = """
 -- Imported transactions
+-- Note: amount is always in workspace base_currency
+-- original_amount/original_currency store the original values if different
 CREATE TABLE IF NOT EXISTS transactions (
     id TEXT PRIMARY KEY,
     date DATE NOT NULL,
     amount DECIMAL NOT NULL,
-    currency TEXT NOT NULL,
+    original_amount DECIMAL,
+    original_currency TEXT,
     category TEXT NOT NULL,
     description TEXT,
     is_savings BOOLEAN DEFAULT FALSE,
@@ -22,7 +28,7 @@ CREATE TABLE IF NOT EXISTS transactions (
     is_fixed BOOLEAN DEFAULT FALSE,
     source_file TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(date, amount, currency, category, description)
+    UNIQUE(date, amount, category, description)
 );
 
 CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date);

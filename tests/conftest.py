@@ -20,11 +20,13 @@ from fintrack.core.models import (
 
 @pytest.fixture
 def sample_transaction() -> Transaction:
-    """Create a sample transaction for testing."""
+    """Create a sample transaction for testing.
+
+    Note: amount is in workspace base_currency (no currency field needed).
+    """
     return Transaction(
         date=date(2024, 1, 15),
         amount=Decimal("-50.00"),
-        currency="EUR",
         category="food",
         description="Grocery shopping",
     )
@@ -36,7 +38,6 @@ def sample_income_transaction() -> Transaction:
     return Transaction(
         date=date(2024, 1, 10),
         amount=Decimal("5000.00"),
-        currency="EUR",
         category="salary",
         description="Monthly salary",
     )
@@ -48,7 +49,6 @@ def sample_deduction_transaction() -> Transaction:
     return Transaction(
         date=date(2024, 1, 10),
         amount=Decimal("-1000.00"),
-        currency="EUR",
         category="tax",
         description="Income tax",
         is_deduction=True,
@@ -61,7 +61,6 @@ def sample_fixed_transaction() -> Transaction:
     return Transaction(
         date=date(2024, 1, 1),
         amount=Decimal("-800.00"),
-        currency="EUR",
         category="housing",
         description="Monthly rent",
         is_fixed=True,
@@ -74,7 +73,6 @@ def sample_savings_transaction() -> Transaction:
     return Transaction(
         date=date(2024, 1, 15),
         amount=Decimal("-500.00"),
-        currency="EUR",
         category="savings",
         description="Monthly savings",
         is_savings=True,
@@ -83,13 +81,15 @@ def sample_savings_transaction() -> Transaction:
 
 @pytest.fixture
 def sample_budget_plan() -> BudgetPlan:
-    """Create a sample budget plan for testing."""
+    """Create a sample budget plan for testing.
+
+    Note: All amounts are in workspace base_currency.
+    """
     return BudgetPlan(
         id="test_plan_2024_01",
         valid_from=date(2024, 1, 1),
         valid_to=None,
         gross_income=Decimal("5000.00"),
-        income_currency="EUR",
         deductions=[
             DeductionItem(name="income_tax", amount=Decimal("1000.00")),
             DeductionItem(name="social_security", amount=Decimal("200.00")),

@@ -28,7 +28,12 @@ class SQLiteTransactionRepository(TransactionRepository):
             id=UUID(row["id"]),
             date=date.fromisoformat(row["date"]),
             amount=Decimal(str(row["amount"])),
-            currency=row["currency"],
+            original_amount=(
+                Decimal(str(row["original_amount"]))
+                if row["original_amount"] is not None
+                else None
+            ),
+            original_currency=row["original_currency"],
             category=row["category"],
             description=row["description"],
             is_savings=bool(row["is_savings"]),
@@ -44,7 +49,8 @@ class SQLiteTransactionRepository(TransactionRepository):
             str(tx.id),
             tx.date.isoformat(),
             str(tx.amount),
-            tx.currency,
+            str(tx.original_amount) if tx.original_amount is not None else None,
+            tx.original_currency,
             tx.category,
             tx.description,
             tx.is_savings,
@@ -58,9 +64,9 @@ class SQLiteTransactionRepository(TransactionRepository):
         """Save a single transaction."""
         sql = """
             INSERT OR IGNORE INTO transactions
-            (id, date, amount, currency, category, description,
+            (id, date, amount, original_amount, original_currency, category, description,
              is_savings, is_deduction, is_fixed, source_file, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
         try:
             with self.db.connection() as conn:
@@ -75,9 +81,9 @@ class SQLiteTransactionRepository(TransactionRepository):
 
         sql = """
             INSERT OR IGNORE INTO transactions
-            (id, date, amount, currency, category, description,
+            (id, date, amount, original_amount, original_currency, category, description,
              is_savings, is_deduction, is_fixed, source_file, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
         params = [self._transaction_to_params(tx) for tx in transactions]
 
@@ -147,33 +153,34 @@ class SQLiteTransactionRepository(TransactionRepository):
         self,
         tx_date: date,
         amount: Decimal,
-        currency: str,
         category: str,
         description: str | None,
     ) -> bool:
-        """Check if a matching transaction exists."""
+        """Check if a matching transaction exists.
+
+        Note: Currency is no longer part of uniqueness check (v0.2.0+).
+        """
         if description:
             sql = """
                 SELECT 1 FROM transactions
-                WHERE date = ? AND amount = ? AND currency = ?
+                WHERE date = ? AND amount = ?
                 AND category = ? AND description = ?
                 LIMIT 1
             """
             params: tuple = (
                 tx_date.isoformat(),
                 str(amount),
-                currency,
                 category,
                 description,
             )
         else:
             sql = """
                 SELECT 1 FROM transactions
-                WHERE date = ? AND amount = ? AND currency = ?
+                WHERE date = ? AND amount = ?
                 AND category = ? AND description IS NULL
                 LIMIT 1
             """
-            params = (tx_date.isoformat(), str(amount), currency, category)
+            params = (tx_date.isoformat(), str(amount), category)
 
         try:
             rows = self.db.execute(sql, params)

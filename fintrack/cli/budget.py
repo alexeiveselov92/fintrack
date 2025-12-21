@@ -81,7 +81,7 @@ def budget_command(
 
     # Calculate projection
     projection = calculate_budget_projection(plan, period_start, ws.config.interval)
-    currency = plan.income_currency
+    currency = ws.config.base_currency
 
     # Display header
     console.print()

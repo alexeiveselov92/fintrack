@@ -20,17 +20,22 @@ from fintrack.core.models import (
 
 
 class TestTransaction:
-    """Tests for Transaction model."""
+    """Tests for Transaction model.
+
+    Note: 'amount' is always in workspace base_currency.
+    'original_amount' and 'original_currency' are optional reference fields.
+    """
 
     def test_create_basic_transaction(self) -> None:
         """Test creating a basic expense transaction."""
         tx = Transaction(
             date=date(2024, 1, 15),
             amount=Decimal("-50.00"),
-            currency="EUR",
             category="food",
         )
         assert tx.amount == Decimal("-50.00")
+        assert tx.original_amount is None
+        assert tx.original_currency is None
         assert tx.is_savings is False
         assert tx.is_deduction is False
         assert tx.is_fixed is False
@@ -40,7 +45,6 @@ class TestTransaction:
         tx = Transaction(
             date=date(2024, 1, 15),
             amount=Decimal("-50.00"),
-            currency="EUR",
             category="food",
         )
         assert tx.id is not None
@@ -51,7 +55,6 @@ class TestTransaction:
             Transaction(
                 date=date(2024, 1, 15),
                 amount=Decimal("-100.00"),
-                currency="EUR",
                 category="test",
                 is_deduction=True,
                 is_fixed=True,
@@ -63,7 +66,6 @@ class TestTransaction:
         tx = Transaction(
             date=date(2024, 1, 15),
             amount=Decimal("-500.00"),
-            currency="EUR",
             category="savings",
             is_savings=True,
         )
@@ -75,20 +77,32 @@ class TestTransaction:
         tx = Transaction(
             date=date(2024, 1, 1),
             amount=Decimal("-800.00"),
-            currency="EUR",
             category="housing",
             is_fixed=True,
         )
         assert tx.is_fixed is True
         assert tx.is_deduction is False
 
-    def test_transaction_currency_validation(self) -> None:
-        """Test currency code must be 3 uppercase letters."""
+    def test_transaction_with_original_currency(self) -> None:
+        """Test transaction with original currency info."""
+        tx = Transaction(
+            date=date(2024, 1, 15),
+            amount=Decimal("-46.00"),  # Converted to EUR
+            original_amount=Decimal("-50.00"),
+            original_currency="USD",
+            category="food",
+        )
+        assert tx.amount == Decimal("-46.00")
+        assert tx.original_amount == Decimal("-50.00")
+        assert tx.original_currency == "USD"
+
+    def test_transaction_original_currency_validation(self) -> None:
+        """Test original_currency code must be 3 uppercase letters if provided."""
         with pytest.raises(ValidationError):
             Transaction(
                 date=date(2024, 1, 15),
                 amount=Decimal("-50.00"),
-                currency="euro",  # lowercase
+                original_currency="usd",  # lowercase
                 category="food",
             )
 
@@ -98,7 +112,6 @@ class TestTransaction:
             Transaction(
                 date=date(2024, 1, 15),
                 amount=Decimal("-50.00"),
-                currency="EUR",
                 category="",
             )
 

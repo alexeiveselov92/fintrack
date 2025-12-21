@@ -89,9 +89,8 @@ id: "december_2024"
 # When this plan becomes active
 valid_from: "2024-12-01"
 
-# Your gross monthly income (before any deductions)
+# All amounts are in workspace base_currency (set in workspace.yaml)
 gross_income: 5000.00
-income_currency: "EUR"
 
 # Pre-tax deductions (subtracted from gross to get net income)
 deductions:
@@ -154,20 +153,22 @@ Budget Plans:
 Create a CSV file `transactions/december.csv`:
 
 ```csv
-date,amount,currency,category,description,is_savings,is_deduction,is_fixed
-2024-12-01,5000.00,EUR,salary,December salary,false,false,false
-2024-12-01,-1000.00,EUR,tax,Income tax,false,true,false
-2024-12-01,-200.00,EUR,social,Social security,false,true,false
-2024-12-01,-800.00,EUR,housing,Monthly rent,false,false,true
-2024-12-02,-150.00,EUR,utilities,Electricity + water,false,false,true
-2024-12-03,-45.50,EUR,food,Weekly groceries,false,false,false
-2024-12-05,-12.00,EUR,transport,Bus ticket,false,false,false
-2024-12-07,-85.00,EUR,food,Restaurant dinner,false,false,false
-2024-12-10,-500.00,EUR,savings,Monthly savings transfer,true,false,false
-2024-12-15,-30.00,EUR,entertainment,Netflix + Spotify,false,false,true
-2024-12-18,-50.00,EUR,food,Groceries,false,false,false
-2024-12-20,-25.00,EUR,health,Pharmacy,false,false,false
+date,amount,category,description,is_savings,is_deduction,is_fixed
+2024-12-01,5000.00,salary,December salary,false,false,false
+2024-12-01,-1000.00,tax,Income tax,false,true,false
+2024-12-01,-200.00,social,Social security,false,true,false
+2024-12-01,-800.00,housing,Monthly rent,false,false,true
+2024-12-02,-150.00,utilities,Electricity + water,false,false,true
+2024-12-03,-45.50,food,Weekly groceries,false,false,false
+2024-12-05,-12.00,transport,Bus ticket,false,false,false
+2024-12-07,-85.00,food,Restaurant dinner,false,false,false
+2024-12-10,-500.00,savings,Monthly savings transfer,true,false,false
+2024-12-15,-30.00,entertainment,Netflix + Spotify,false,false,true
+2024-12-18,-50.00,food,Groceries,false,false,false
+2024-12-20,-25.00,health,Pharmacy,false,false,false
 ```
+
+**Note**: All amounts are in workspace `base_currency` (set in `workspace.yaml`).
 
 Import the transactions:
 
@@ -269,13 +270,14 @@ Creates a visual HTML report in `reports/` directory.
 
 ## CSV Format Reference
 
+**Note**: All amounts are in workspace `base_currency` (set in `workspace.yaml`).
+
 ### Required Columns
 
 | Column | Type | Description |
 |--------|------|-------------|
 | `date` | YYYY-MM-DD | Transaction date |
-| `amount` | Decimal | Amount (positive = income, negative = expense) |
-| `currency` | String | Currency code (EUR, USD, etc.) |
+| `amount` | Decimal | Amount in base_currency (positive = income, negative = expense) |
 | `category` | String | Category name |
 
 ### Optional Columns
@@ -283,6 +285,8 @@ Creates a visual HTML report in `reports/` directory.
 | Column | Type | Default | Description |
 |--------|------|---------|-------------|
 | `description` | String | empty | Transaction description |
+| `original_amount` | Decimal | - | Original amount (if different currency) |
+| `original_currency` | String | - | Original currency code (if different from base) |
 | `is_savings` | Boolean | false | Mark as savings transfer |
 | `is_deduction` | Boolean | false | Mark as pre-tax deduction |
 | `is_fixed` | Boolean | false | Mark as fixed expense |
@@ -296,22 +300,33 @@ Everything else (including empty) is treated as `false`.
 ### Example: Different Transaction Types
 
 ```csv
-date,amount,currency,category,description,is_savings,is_deduction,is_fixed
+date,amount,category,description,is_savings,is_deduction,is_fixed
 # Income (positive amount)
-2024-12-01,5000.00,EUR,salary,Monthly salary,,,
+2024-12-01,5000.00,salary,Monthly salary,,,
 
 # Tax deduction (negative, is_deduction=true)
-2024-12-01,-1000.00,EUR,tax,Income tax,,true,
+2024-12-01,-1000.00,tax,Income tax,,true,
 
 # Fixed expense (negative, is_fixed=true)
-2024-12-01,-800.00,EUR,housing,Rent,,,true
+2024-12-01,-800.00,housing,Rent,,,true
 
 # Savings (negative, is_savings=true)
-2024-12-15,-500.00,EUR,savings,Emergency fund,true,,
+2024-12-15,-500.00,savings,Emergency fund,true,,
 
 # Variable expense (negative, no flags)
-2024-12-10,-45.00,EUR,food,Groceries,,,
+2024-12-10,-45.00,food,Groceries,,,
 ```
+
+### Example: Transaction with Original Currency
+
+If you have a transaction in a different currency, record both the converted amount and the original:
+
+```csv
+date,amount,category,description,original_amount,original_currency
+2024-12-10,-46.00,food,Restaurant abroad,-50.00,USD
+```
+
+This shows the transaction was $50 USD, converted to €46 EUR (workspace base_currency).
 
 ## Commands Reference
 
@@ -434,15 +449,25 @@ fintrack import                     # Re-import it
 | Week | `2024-W50` | Week 50 of 2024 |
 | Range | `2024-12-01:2024-12-31` | Custom date range |
 
-## Multi-Currency Support (Optional)
+## Currency Handling
 
-Create `rates.yaml` in workspace root:
+FinTrack works with a single `base_currency` set in `workspace.yaml`. All amounts (`amount` in transactions, values in budget plans) are in this currency.
+
+For transactions originally in other currencies:
+1. Convert the amount to `base_currency` yourself
+2. Optionally record the original values in `original_amount` and `original_currency` columns
+
+**Workspace configuration** (`workspace.yaml`):
 
 ```yaml
-base_currency: "EUR"
-rates:
-  USD: 0.92  # 1 USD = 0.92 EUR
-  GBP: 1.17  # 1 GBP = 1.17 EUR
+base_currency: "EUR"  # All calculations use this currency
+```
+
+**Transaction example** (converted from USD to EUR):
+
+```csv
+date,amount,category,description,original_amount,original_currency
+2024-12-10,-46.00,food,Restaurant abroad,-50.00,USD
 ```
 
 ## Workspace Structure
