@@ -247,3 +247,50 @@ def list_categories(
     for cat in sorted(categories):
         marker = " [dim](fixed)[/dim]" if cat in fixed_cats else ""
         console.print(f"  • {cat}{marker}")
+
+
+@list_app.command(name="imports")
+def list_imports(
+    workspace: Path = typer.Option(
+        None,
+        "--workspace",
+        "-w",
+        help="Path to workspace",
+    ),
+) -> None:
+    """List imported files."""
+    try:
+        ws = load_workspace(workspace)
+    except WorkspaceNotFoundError:
+        console.print("[red]Error:[/red] No workspace found")
+        raise typer.Exit(1)
+
+    import_log = ws.storage.get_import_log_repository()
+    imports = import_log.get_imported_files()
+
+    if not imports:
+        console.print("[yellow]No files imported yet[/yellow]")
+        console.print("Run 'fintrack import' to import transactions")
+        raise typer.Exit(0)
+
+    table = Table(title="Imported Files")
+    table.add_column("File")
+    table.add_column("Records", justify="right")
+    table.add_column("Imported At")
+    table.add_column("Hash", style="dim")
+
+    for imp in imports:
+        # Extract just filename from path
+        file_path = str(imp["file_path"])
+        filename = Path(file_path).name
+
+        table.add_row(
+            filename,
+            str(imp["records_count"]),
+            str(imp["imported_at"])[:19],  # Trim to datetime
+            str(imp["file_hash"])[:12] + "...",  # Truncate hash
+        )
+
+    console.print(table)
+    console.print()
+    console.print(f"Total: [cyan]{len(imports)}[/cyan] files imported")

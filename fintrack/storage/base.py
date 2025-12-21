@@ -116,6 +116,27 @@ class TransactionRepository(ABC):
         """
         ...
 
+    @abstractmethod
+    def delete_all(self) -> int:
+        """Delete all transactions.
+
+        Returns:
+            Number of transactions deleted.
+        """
+        ...
+
+    @abstractmethod
+    def delete_by_source(self, source_file: str) -> int:
+        """Delete transactions from a specific source file.
+
+        Args:
+            source_file: Source file name or path pattern.
+
+        Returns:
+            Number of transactions deleted.
+        """
+        ...
+
 
 class CacheRepository(ABC):
     """Abstract repository for caching aggregated data."""
@@ -224,5 +245,26 @@ class ImportLogRepository(ABC):
 
         Returns:
             List of dicts with file_path, file_hash, records_count, imported_at.
+        """
+        ...
+
+    @abstractmethod
+    def clear_all(self) -> int:
+        """Clear all import log entries.
+
+        Returns:
+            Number of entries deleted.
+        """
+        ...
+
+    @abstractmethod
+    def delete_by_file(self, filename: str) -> bool:
+        """Delete import log entry for a specific file.
+
+        Args:
+            filename: File name or path pattern to match.
+
+        Returns:
+            True if an entry was deleted.
         """
         ...

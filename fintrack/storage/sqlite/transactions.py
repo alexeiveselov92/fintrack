@@ -198,3 +198,23 @@ class SQLiteTransactionRepository(TransactionRepository):
             return int(rows[0]["cnt"])
         except sqlite3.Error as e:
             raise StorageError("count", str(e))
+
+    def delete_all(self) -> int:
+        """Delete all transactions."""
+        sql = "DELETE FROM transactions"
+        try:
+            with self.db.connection() as conn:
+                cursor = conn.execute(sql)
+                return cursor.rowcount
+        except sqlite3.Error as e:
+            raise StorageError("delete_all_transactions", str(e))
+
+    def delete_by_source(self, source_file: str) -> int:
+        """Delete transactions from a specific source file."""
+        sql = "DELETE FROM transactions WHERE source_file LIKE ?"
+        try:
+            with self.db.connection() as conn:
+                cursor = conn.execute(sql, (f"%{source_file}",))
+                return cursor.rowcount
+        except sqlite3.Error as e:
+            raise StorageError("delete_by_source", str(e))

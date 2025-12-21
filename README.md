@@ -402,6 +402,25 @@ fintrack list transactions --period 2024-12
 fintrack list transactions --category food
 fintrack list plans
 fintrack list categories
+fintrack list imports
+```
+
+### `fintrack cache clear`
+
+Clear all transactions and import history.
+
+```bash
+fintrack cache clear           # Show what would be deleted
+fintrack cache clear --confirm # Actually delete everything
+```
+
+### `fintrack cache reset <filename>`
+
+Reset a specific file to allow re-import.
+
+```bash
+fintrack cache reset december.csv  # Delete transactions from this file
+fintrack import                     # Re-import it
 ```
 
 ## Period Formats

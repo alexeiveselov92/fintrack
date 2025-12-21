@@ -65,3 +65,23 @@ class SQLiteImportLogRepository(ImportLogRepository):
             ]
         except sqlite3.Error as e:
             raise StorageError("get_imported_files", str(e))
+
+    def clear_all(self) -> int:
+        """Clear all import log entries."""
+        sql = "DELETE FROM import_log"
+        try:
+            with self.db.connection() as conn:
+                cursor = conn.execute(sql)
+                return cursor.rowcount
+        except sqlite3.Error as e:
+            raise StorageError("clear_import_log", str(e))
+
+    def delete_by_file(self, filename: str) -> bool:
+        """Delete import log entry for a specific file."""
+        sql = "DELETE FROM import_log WHERE file_path LIKE ?"
+        try:
+            with self.db.connection() as conn:
+                cursor = conn.execute(sql, (f"%{filename}",))
+                return cursor.rowcount > 0
+        except sqlite3.Error as e:
+            raise StorageError("delete_import_by_file", str(e))

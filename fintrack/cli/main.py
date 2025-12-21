@@ -55,6 +55,7 @@ from fintrack.cli.status import status_command
 from fintrack.cli.analyze import analyze_command
 from fintrack.cli.report import report_command
 from fintrack.cli.list_cmd import list_app
+from fintrack.cli.cache_cmd import cache_app
 
 app.command(name="init")(init_command)
 app.command(name="validate")(validate_command)
@@ -64,6 +65,7 @@ app.command(name="status")(status_command)
 app.command(name="analyze")(analyze_command)
 app.command(name="report")(report_command)
 app.add_typer(list_app, name="list")
+app.add_typer(cache_app, name="cache")
 
 
 if __name__ == "__main__":
