@@ -62,6 +62,8 @@ def generate_report_html(
     fixed_pct = 0
     flexible_pct = 0
     savings_pct = 0
+    deductions_pct = 0
+    income_pct = 0
 
     if plan:
         if plan.total_fixed_expenses > 0:
@@ -70,6 +72,10 @@ def generate_report_html(
             flexible_pct = float(total_flexible / plan.disposable_income * 100)
         if plan.savings_target > 0:
             savings_pct = float(summary.total_savings / plan.savings_target * 100)
+        if plan.total_deductions > 0:
+            deductions_pct = float(summary.total_deductions / plan.total_deductions * 100)
+        if plan.gross_income > 0:
+            income_pct = float(summary.total_income / plan.gross_income * 100)
 
     # Generate HTML
     html = f"""<!DOCTYPE html>
@@ -162,15 +168,49 @@ def generate_report_html(
                 <div class="card-label">Cumulative Balance</div>
                 <div class="card-value {'positive' if summary.cumulative_balance > 0 else 'negative' if summary.cumulative_balance < 0 else ''}">{format_currency_html(summary.cumulative_balance, currency)}</div>
             </div>
+            <div class="card">
+                <div class="card-label">Cash on Hand</div>
+                <div class="card-value {'positive' if summary.cash_on_hand > 0 else 'negative' if summary.cash_on_hand < 0 else ''}">{format_currency_html(summary.cash_on_hand, currency)}</div>
+            </div>
+            {"<div class='card'><div class='card-label'>Cumulative Target</div><div class='card-value'>" + format_currency_html(summary.cumulative_savings_target, currency) + "</div></div>" if summary.cumulative_savings_target > 0 else ""}
+            {"<div class='card'><div class='card-label'>Savings Surplus</div><div class='card-value " + ("positive" if summary.savings_surplus >= 0 else "negative") + "'>" + ("+" if summary.savings_surplus > 0 else "") + format_currency_html(summary.savings_surplus, currency) + "</div></div>" if summary.cumulative_savings_target > 0 else ""}
             {"<div class='card'><div class='card-label'>Disposable Budget</div><div class='card-value'>" + format_currency_html(plan.disposable_income, currency) + "</div></div>" if plan else ""}
         </div>
 """
 
     # Progress bars if plan exists
     if plan:
+        # Build gross income section if applicable
+        income_html = ""
+        if plan.gross_income > 0:
+            income_html = f"""
+            <div style="margin-bottom: 1rem;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                    <span>Gross Income (vs Plan)</span>
+                    <span>{format_currency_html(summary.total_income, currency)} / {format_currency_html(plan.gross_income, currency)} ({income_pct:.0f}%)</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill {'ok' if income_pct >= 100 else 'warning' if income_pct >= 80 else 'danger'}" style="width: {min(income_pct, 100)}%"></div>
+                </div>
+            </div>"""
+
+        # Build deductions section if applicable
+        deductions_html = ""
+        if plan.total_deductions > 0:
+            deductions_html = f"""
+            <div style="margin-bottom: 1rem;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                    <span>Deductions (vs Plan)</span>
+                    <span>{format_currency_html(summary.total_deductions, currency)} / {format_currency_html(plan.total_deductions, currency)} ({deductions_pct:.0f}%)</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill {'ok' if deductions_pct <= 100 else 'danger'}" style="width: {min(deductions_pct, 100)}%"></div>
+                </div>
+            </div>"""
+
         html += f"""
         <h2>Budget Progress</h2>
-        <div class="summary-box">
+        <div class="summary-box">{income_html}{deductions_html}
             <div style="margin-bottom: 1rem;">
                 <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
                     <span>Fixed Expenses</span>

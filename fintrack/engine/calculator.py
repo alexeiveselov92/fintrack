@@ -6,16 +6,20 @@ and actual spending from transaction data.
 
 from datetime import date
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 from fintrack.core.models import (
     BudgetPlan,
     BudgetProjection,
     CategoryBudgetProjection,
+    IntervalType,
     PeriodSummary,
     Transaction,
 )
-from fintrack.engine.periods import format_period, get_period_end
-from fintrack.core.models import IntervalType
+from fintrack.engine.periods import format_period, get_period_end, get_period_start
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 def calculate_budget_projection(
@@ -266,3 +270,84 @@ def calculate_cumulative_balance(
             continue  # Exclude savings transfers
         balance += tx.amount  # Income positive, expenses negative
     return balance
+
+
+def calculate_cash_on_hand(
+    cumulative_balance: Decimal,
+    cumulative_savings: Decimal,
+) -> Decimal:
+    """Calculate cash on hand (money not in savings account).
+
+    This represents money available for spending that hasn't been
+    transferred to savings.
+
+    Args:
+        cumulative_balance: Total income - expenses (excluding savings transfers).
+        cumulative_savings: Total savings deposits - withdrawals.
+
+    Returns:
+        Cash on hand (can be negative if overspent).
+    """
+    return cumulative_balance - cumulative_savings
+
+
+def calculate_savings_surplus(
+    cumulative_savings: Decimal,
+    cumulative_target: Decimal,
+) -> Decimal:
+    """Calculate savings surplus/deficit vs cumulative target.
+
+    Positive = ahead of savings plan (saved more than required).
+    Negative = behind savings plan (saved less than required).
+
+    Args:
+        cumulative_savings: Total savings accumulated.
+        cumulative_target: Total savings that should have been accumulated.
+
+    Returns:
+        Surplus (positive) or deficit (negative).
+    """
+    return cumulative_savings - cumulative_target
+
+
+def calculate_cumulative_savings_target(
+    period_end: date,
+    first_transaction_date: date,
+    interval: IntervalType,
+    get_plan_for_date: "Callable[[date], BudgetPlan | None]",
+    custom_days: int | None = None,
+) -> Decimal:
+    """Calculate cumulative savings target from first transaction to period end.
+
+    Iterates through all periods from the first transaction date up to
+    (and including) the given period, summing savings_target from applicable plans.
+
+    Args:
+        period_end: End date of current period (inclusive).
+        first_transaction_date: Date of first transaction in workspace.
+        interval: Period interval type.
+        get_plan_for_date: Function to get applicable plan for a date.
+        custom_days: Custom interval days if interval is CUSTOM.
+
+    Returns:
+        Total savings target for all periods up to and including current.
+    """
+    total_target = Decimal(0)
+
+    # Start from the period containing the first transaction
+    current_start = get_period_start(first_transaction_date, interval, custom_days)
+
+    while current_start <= period_end:
+        try:
+            plan = get_plan_for_date(current_start)
+            if plan:
+                total_target += plan.savings_target
+        except Exception:
+            # No plan for this period, skip
+            pass
+
+        # Move to next period
+        current_end = get_period_end(current_start, interval, custom_days)
+        current_start = current_end
+
+    return total_target

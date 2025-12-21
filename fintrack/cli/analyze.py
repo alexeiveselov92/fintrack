@@ -101,6 +101,16 @@ def analyze_command(
     # For cumulative savings, we need all transactions from the beginning
     all_transactions = tx_repo.get_all()
 
+    # Get first transaction date for cumulative target calculation
+    first_tx_date = min((tx.date for tx in all_transactions), default=None) if all_transactions else None
+
+    # Create a safe get_plan_for_date callback
+    def safe_get_plan(d: date) -> "BudgetPlan | None":
+        try:
+            return ws.get_plan_for_date(d)
+        except Exception:
+            return None
+
     # For historical analysis, we need transactions from the analysis window
     from fintrack.engine.periods import get_previous_periods
     prev_periods = get_previous_periods(
@@ -138,6 +148,8 @@ def analyze_command(
         plan=plan,
         historical_summaries=historical,
         custom_days=ws.config.custom_interval_days,
+        get_plan_for_date=safe_get_plan,
+        first_transaction_date=first_tx_date,
     )
 
     # Filter by category if specified
@@ -162,6 +174,40 @@ def analyze_command(
     if summary.transaction_count == 0:
         console.print("[yellow]No transactions found for this period[/yellow]")
         raise typer.Exit(0)
+
+    # Gross Income (vs Plan)
+    if plan and plan.gross_income > 0:
+        console.print("[bold]Gross Income (vs Plan)[/bold]")
+        planned_income = plan.gross_income
+        actual_income = summary.total_income
+        income_pct = (actual_income / planned_income * 100) if planned_income > 0 else Decimal(0)
+        variance = actual_income - planned_income
+
+        console.print(f"  Plan:      {format_currency(planned_income, currency):>12}")
+        console.print(f"  Actual:    {format_currency(actual_income, currency):>12}  ({income_pct:.1f}%)")
+
+        if variance >= 0:
+            console.print(f"  [green]Variance:    +{format_currency(variance, currency):>11}[/green]  (above plan)")
+        else:
+            console.print(f"  [red]Variance:    {format_currency(variance, currency):>12}[/red]  (below plan)")
+        console.print()
+
+    # Deductions (vs Plan)
+    if plan and plan.total_deductions > 0:
+        console.print("[bold]Deductions (vs Plan)[/bold]")
+        planned_ded = plan.total_deductions
+        actual_ded = summary.total_deductions
+        ded_pct = (actual_ded / planned_ded * 100) if planned_ded > 0 else Decimal(0)
+        variance = planned_ded - actual_ded
+
+        console.print(f"  Plan:      {format_currency(planned_ded, currency):>12}")
+        console.print(f"  Actual:    {format_currency(actual_ded, currency):>12}  ({ded_pct:.1f}%)")
+
+        if variance >= 0:
+            console.print(f"  [green]Variance:    +{format_currency(variance, currency):>11}[/green]  (under plan)")
+        else:
+            console.print(f"  [red]Variance:    {format_currency(variance, currency):>12}[/red]  (over plan)")
+        console.print()
 
     # Overview
     if plan:
@@ -252,16 +298,31 @@ def analyze_command(
         console.print(table)
         console.print()
 
-    # Savings & Cumulative
+    # Savings & Balance
     console.print("[bold]Savings & Balance[/bold]")
+
+    # Period savings
     if plan and plan.savings_target > 0:
-        console.print(f"  Target:              {format_currency(plan.savings_target, currency):>12}")
+        console.print(f"  Target (period):        {format_currency(plan.savings_target, currency):>12}")
         achievement = (summary.total_savings / plan.savings_target * 100)
-        console.print(f"  Saved (period):      {format_currency(summary.total_savings, currency):>12}  ({achievement:.1f}%)")
+        console.print(f"  Saved (period):         {format_currency(summary.total_savings, currency):>12}  ({achievement:.1f}%)")
     else:
-        console.print(f"  Saved (period):      {format_currency(summary.total_savings, currency):>12}")
-    console.print(f"  Cumulative Savings:  {format_currency(summary.cumulative_savings, currency):>12}")
-    console.print(f"  Cumulative Balance:  {format_currency(summary.cumulative_balance, currency):>12}")
+        console.print(f"  Saved (period):         {format_currency(summary.total_savings, currency):>12}")
+
+    # Cumulative values
+    console.print(f"  Cumulative Savings:     {format_currency(summary.cumulative_savings, currency):>12}")
+
+    # Cumulative target and surplus
+    if summary.cumulative_savings_target > 0:
+        console.print(f"  Cumulative Target:      {format_currency(summary.cumulative_savings_target, currency):>12}")
+        if summary.savings_surplus >= 0:
+            console.print(f"  [green]Savings Surplus:        +{format_currency(summary.savings_surplus, currency):>11}[/green]  (ahead)")
+        else:
+            console.print(f"  [red]Savings Deficit:         {format_currency(summary.savings_surplus, currency):>12}[/red]  (behind)")
+
+    # Cash on hand and cumulative balance
+    console.print(f"  Cumulative Balance:     {format_currency(summary.cumulative_balance, currency):>12}")
+    console.print(f"  Cash on Hand:           {format_currency(summary.cash_on_hand, currency):>12}")
     console.print()
 
     # Summary

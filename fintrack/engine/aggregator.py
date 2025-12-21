@@ -4,6 +4,7 @@ Aggregates transactions by period, calculates moving averages,
 and performs variance analysis against budget plans.
 """
 
+from collections.abc import Callable
 from datetime import date, timedelta
 from decimal import Decimal
 from typing import Sequence
@@ -17,8 +18,11 @@ from fintrack.core.models import (
 )
 from fintrack.engine.calculator import (
     aggregate_transactions,
+    calculate_cash_on_hand,
     calculate_cumulative_balance,
     calculate_cumulative_savings,
+    calculate_cumulative_savings_target,
+    calculate_savings_surplus,
     calculate_variance,
 )
 from fintrack.engine.periods import get_period_end, get_previous_periods
@@ -32,6 +36,8 @@ def get_period_summary(
     plan: BudgetPlan | None = None,
     custom_days: int | None = None,
     all_transactions: list[Transaction] | None = None,
+    get_plan_for_date: Callable[[date], BudgetPlan | None] | None = None,
+    first_transaction_date: date | None = None,
 ) -> PeriodSummary:
     """Get aggregated summary for a period.
 
@@ -44,6 +50,10 @@ def get_period_summary(
         custom_days: Days for custom interval.
         all_transactions: All transactions for cumulative savings calculation.
                           If None, uses transactions param.
+        get_plan_for_date: Optional callback to get plan for a given date.
+                           Used for cumulative_savings_target calculation.
+        first_transaction_date: Date of first transaction in workspace.
+                                Used for cumulative_savings_target calculation.
 
     Returns:
         Aggregated PeriodSummary.
@@ -64,6 +74,26 @@ def get_period_summary(
     last_day_of_period = period_end - timedelta(days=1)
     summary.cumulative_savings = calculate_cumulative_savings(txns_for_cumulative, last_day_of_period)
     summary.cumulative_balance = calculate_cumulative_balance(txns_for_cumulative, last_day_of_period)
+
+    # Calculate cash on hand (always available)
+    summary.cash_on_hand = calculate_cash_on_hand(
+        summary.cumulative_balance,
+        summary.cumulative_savings,
+    )
+
+    # Calculate cumulative savings target if we have the required info
+    if get_plan_for_date is not None and first_transaction_date is not None:
+        summary.cumulative_savings_target = calculate_cumulative_savings_target(
+            period_end=last_day_of_period,
+            first_transaction_date=first_transaction_date,
+            interval=interval,
+            get_plan_for_date=get_plan_for_date,
+            custom_days=custom_days,
+        )
+        summary.savings_surplus = calculate_savings_surplus(
+            summary.cumulative_savings,
+            summary.cumulative_savings_target,
+        )
 
     return summary
 
@@ -168,6 +198,8 @@ def analyze_period(
     plan: BudgetPlan | None,
     historical_summaries: list[PeriodSummary] | None = None,
     custom_days: int | None = None,
+    get_plan_for_date: Callable[[date], BudgetPlan | None] | None = None,
+    first_transaction_date: date | None = None,
 ) -> tuple[PeriodSummary, list[CategoryAnalysis]]:
     """Perform full analysis of a period.
 
@@ -179,6 +211,8 @@ def analyze_period(
         plan: BudgetPlan for the period.
         historical_summaries: Previous period summaries for averages.
         custom_days: Days for custom interval.
+        get_plan_for_date: Optional callback to get plan for a given date.
+        first_transaction_date: Date of first transaction in workspace.
 
     Returns:
         Tuple of (PeriodSummary, list of CategoryAnalysis).
@@ -192,6 +226,8 @@ def analyze_period(
         plan=plan,
         custom_days=custom_days,
         all_transactions=transactions,  # For cumulative savings calculation
+        get_plan_for_date=get_plan_for_date,
+        first_transaction_date=first_transaction_date,
     )
 
     # Calculate spending budget

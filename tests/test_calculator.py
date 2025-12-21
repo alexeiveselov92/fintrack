@@ -6,8 +6,10 @@ from decimal import Decimal
 from fintrack.core.models import Transaction
 from fintrack.engine.calculator import (
     aggregate_transactions,
+    calculate_cash_on_hand,
     calculate_cumulative_balance,
     calculate_cumulative_savings,
+    calculate_savings_surplus,
 )
 
 
@@ -446,3 +448,68 @@ class TestAggregateTransactions:
         # 5000 - 450 = 4550 net saved
         assert summary.total_savings == Decimal("4550.00")
         assert summary.total_income == Decimal("0")  # Savings are not income
+
+
+class TestCalculateCashOnHand:
+    """Tests for calculate_cash_on_hand function."""
+
+    def test_positive_cash_on_hand(self) -> None:
+        """Test when cumulative balance exceeds cumulative savings."""
+        cumulative_balance = Decimal("10000.00")
+        cumulative_savings = Decimal("3000.00")
+        result = calculate_cash_on_hand(cumulative_balance, cumulative_savings)
+        assert result == Decimal("7000.00")
+
+    def test_negative_cash_on_hand(self) -> None:
+        """Test when cumulative savings exceeds cumulative balance."""
+        cumulative_balance = Decimal("2000.00")
+        cumulative_savings = Decimal("5000.00")
+        result = calculate_cash_on_hand(cumulative_balance, cumulative_savings)
+        assert result == Decimal("-3000.00")
+
+    def test_zero_cash_on_hand(self) -> None:
+        """Test when balance equals savings."""
+        cumulative_balance = Decimal("5000.00")
+        cumulative_savings = Decimal("5000.00")
+        result = calculate_cash_on_hand(cumulative_balance, cumulative_savings)
+        assert result == Decimal("0")
+
+    def test_negative_values(self) -> None:
+        """Test with negative balance and savings."""
+        cumulative_balance = Decimal("-1000.00")
+        cumulative_savings = Decimal("-500.00")
+        # -1000 - (-500) = -500
+        result = calculate_cash_on_hand(cumulative_balance, cumulative_savings)
+        assert result == Decimal("-500.00")
+
+
+class TestCalculateSavingsSurplus:
+    """Tests for calculate_savings_surplus function."""
+
+    def test_ahead_of_target(self) -> None:
+        """Test when savings exceed target (positive surplus)."""
+        cumulative_savings = Decimal("15000.00")
+        cumulative_target = Decimal("12000.00")
+        result = calculate_savings_surplus(cumulative_savings, cumulative_target)
+        assert result == Decimal("3000.00")
+
+    def test_behind_target(self) -> None:
+        """Test when savings are below target (negative surplus = deficit)."""
+        cumulative_savings = Decimal("8000.00")
+        cumulative_target = Decimal("12000.00")
+        result = calculate_savings_surplus(cumulative_savings, cumulative_target)
+        assert result == Decimal("-4000.00")
+
+    def test_exactly_on_target(self) -> None:
+        """Test when savings exactly match target."""
+        cumulative_savings = Decimal("12000.00")
+        cumulative_target = Decimal("12000.00")
+        result = calculate_savings_surplus(cumulative_savings, cumulative_target)
+        assert result == Decimal("0")
+
+    def test_zero_target(self) -> None:
+        """Test with zero target."""
+        cumulative_savings = Decimal("5000.00")
+        cumulative_target = Decimal("0")
+        result = calculate_savings_surplus(cumulative_savings, cumulative_target)
+        assert result == Decimal("5000.00")

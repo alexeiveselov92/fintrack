@@ -306,6 +306,11 @@ class PeriodSummary(BaseModel):
     cumulative_balance: Decimal = Decimal(0)  # All-time income - expenses (excl. savings)
     total_deductions: Decimal = Decimal(0)  # is_deduction=True
 
+    # New computed metrics (v0.2.5+)
+    cumulative_savings_target: Decimal = Decimal(0)  # Sum of savings_target from all periods
+    savings_surplus: Decimal = Decimal(0)  # cumulative_savings - cumulative_target (+ = ahead, - = behind)
+    cash_on_hand: Decimal = Decimal(0)  # cumulative_balance - cumulative_savings (money not in savings)
+
     # Category breakdown
     expenses_by_category: dict[str, Decimal] = Field(default_factory=dict)
     fixed_expenses_by_category: dict[str, Decimal] = Field(default_factory=dict)

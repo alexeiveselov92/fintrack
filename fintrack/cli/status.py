@@ -81,8 +81,18 @@ def status_command(
     period_end = get_period_end(period_start, ws.config.interval, ws.config.custom_interval_days)
     transactions = tx_repo.get_by_period(period_start, period_end)
 
-    # Get all transactions for cumulative savings calculation
+    # Get all transactions for cumulative calculations
     all_transactions = tx_repo.get_all()
+
+    # Get first transaction date for cumulative target calculation
+    first_tx_date = min((tx.date for tx in all_transactions), default=None) if all_transactions else None
+
+    # Create a safe get_plan_for_date callback
+    def safe_get_plan(d: date) -> "BudgetPlan | None":
+        try:
+            return ws.get_plan_for_date(d)
+        except Exception:
+            return None
 
     # Get summary
     summary = get_period_summary(
@@ -93,6 +103,8 @@ def status_command(
         plan=plan,
         custom_days=ws.config.custom_interval_days,
         all_transactions=all_transactions,
+        get_plan_for_date=safe_get_plan,
+        first_transaction_date=first_tx_date,
     )
 
     # Calculate days remaining
@@ -117,6 +129,42 @@ def status_command(
         raise typer.Exit(0)
 
     warnings: list[str] = []
+
+    # Gross Income (vs Plan) - show if plan has gross income
+    if plan and plan.gross_income > 0:
+        console.print("[bold]Gross Income (vs Plan)[/bold]")
+        planned_income = plan.gross_income
+        actual_income = summary.total_income
+        income_pct = (actual_income / planned_income * 100) if planned_income > 0 else Decimal(0)
+        variance = actual_income - planned_income
+
+        console.print(f"  Plan:      {format_currency(planned_income, currency):>12}")
+        console.print(f"  Actual:    {format_currency(actual_income, currency):>12}  ({income_pct:.1f}%)")
+
+        if variance >= 0:
+            console.print(f"  [green]Variance:    +{format_currency(variance, currency):>11}[/green]  (above plan)")
+        else:
+            console.print(f"  [red]Variance:    {format_currency(variance, currency):>12}[/red]  (below plan)")
+            warnings.append(f"Actual income below plan by {format_currency(abs(variance), currency)}")
+        console.print()
+
+    # Deductions (vs Plan) - show if plan has deductions
+    if plan and plan.total_deductions > 0:
+        console.print("[bold]Deductions (vs Plan)[/bold]")
+        planned_ded = plan.total_deductions
+        actual_ded = summary.total_deductions
+        ded_pct = (actual_ded / planned_ded * 100) if planned_ded > 0 else Decimal(0)
+        variance = planned_ded - actual_ded
+
+        console.print(f"  Plan:      {format_currency(planned_ded, currency):>12}")
+        console.print(f"  Actual:    {format_currency(actual_ded, currency):>12}  ({ded_pct:.1f}%)")
+
+        if variance >= 0:
+            console.print(f"  [green]Variance:    +{format_currency(variance, currency):>11}[/green]  (under plan)")
+        else:
+            console.print(f"  [red]Variance:    {format_currency(variance, currency):>12}[/red]  (over plan)")
+            warnings.append(f"Deductions over plan by {format_currency(abs(variance), currency)}")
+        console.print()
 
     # Fixed expenses progress
     if plan and plan.total_fixed_expenses > 0:
@@ -151,14 +199,16 @@ def status_command(
             warnings.append(f"Flexible spending over budget by {format_currency(abs(remaining), currency)}")
         console.print()
 
-    # Savings & Cumulative
+    # Savings & Balance
     console.print("[bold]Savings & Balance[/bold]")
+
+    # Period savings
     if plan and plan.savings_target > 0:
         saved = summary.total_savings
         target = plan.savings_target
         pct = (saved / target * 100) if target > 0 else Decimal(0)
-        console.print(f"  Target:              {format_currency(target, currency):>12}")
-        console.print(f"  Saved (period):      {format_currency(saved, currency):>12}  ({pct:.1f}%)")
+        console.print(f"  Target (period):        {format_currency(target, currency):>12}")
+        console.print(f"  Saved (period):         {format_currency(saved, currency):>12}  ({pct:.1f}%)")
         if pct >= 100:
             console.print("  [green]✓ Target reached![/green]")
         elif days_left == 0:
@@ -166,11 +216,23 @@ def status_command(
             console.print(f"  [red]Shortfall: {format_currency(shortfall, currency)}[/red]")
             warnings.append(f"Savings target missed by {format_currency(shortfall, currency)}")
     else:
-        console.print(f"  Saved (period):      {format_currency(summary.total_savings, currency):>12}")
+        console.print(f"  Saved (period):         {format_currency(summary.total_savings, currency):>12}")
 
-    # Always show cumulative values
-    console.print(f"  Cumulative Savings:  {format_currency(summary.cumulative_savings, currency):>12}")
-    console.print(f"  Cumulative Balance:  {format_currency(summary.cumulative_balance, currency):>12}")
+    # Cumulative values - always show
+    console.print(f"  Cumulative Savings:     {format_currency(summary.cumulative_savings, currency):>12}")
+
+    # Cumulative target and surplus - only if we have it
+    if summary.cumulative_savings_target > 0:
+        console.print(f"  Cumulative Target:      {format_currency(summary.cumulative_savings_target, currency):>12}")
+        if summary.savings_surplus >= 0:
+            console.print(f"  [green]Savings Surplus:        +{format_currency(summary.savings_surplus, currency):>11}[/green]  (ahead)")
+        else:
+            console.print(f"  [red]Savings Deficit:         {format_currency(summary.savings_surplus, currency):>12}[/red]  (behind)")
+            warnings.append(f"Behind savings plan by {format_currency(abs(summary.savings_surplus), currency)}")
+
+    # Cash on hand and cumulative balance
+    console.print(f"  Cumulative Balance:     {format_currency(summary.cumulative_balance, currency):>12}")
+    console.print(f"  Cash on Hand:           {format_currency(summary.cash_on_hand, currency):>12}")
     console.print()
 
     # Category breakdown (top spenders)
