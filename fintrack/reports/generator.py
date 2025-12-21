@@ -151,8 +151,12 @@ def generate_report_html(
                 <div class="card-value">{format_currency_html(summary.total_expenses, currency)}</div>
             </div>
             <div class="card">
-                <div class="card-label">Savings</div>
+                <div class="card-label">Savings (Period)</div>
                 <div class="card-value {'positive' if summary.total_savings > 0 else ''}">{format_currency_html(summary.total_savings, currency)}</div>
+            </div>
+            <div class="card">
+                <div class="card-label">Cumulative Savings</div>
+                <div class="card-value {'positive' if summary.cumulative_savings > 0 else ''}">{format_currency_html(summary.cumulative_savings, currency)}</div>
             </div>
             {"<div class='card'><div class='card-label'>Disposable Budget</div><div class='card-value'>" + format_currency_html(plan.disposable_income, currency) + "</div></div>" if plan else ""}
         </div>

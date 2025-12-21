@@ -4,7 +4,7 @@ Aggregates transactions by period, calculates moving averages,
 and performs variance analysis against budget plans.
 """
 
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 from typing import Sequence
 
@@ -15,7 +15,11 @@ from fintrack.core.models import (
     PeriodSummary,
     Transaction,
 )
-from fintrack.engine.calculator import aggregate_transactions, calculate_variance
+from fintrack.engine.calculator import (
+    aggregate_transactions,
+    calculate_cumulative_savings,
+    calculate_variance,
+)
 from fintrack.engine.periods import get_period_end, get_previous_periods
 
 
@@ -26,6 +30,7 @@ def get_period_summary(
     workspace_name: str,
     plan: BudgetPlan | None = None,
     custom_days: int | None = None,
+    all_transactions: list[Transaction] | None = None,
 ) -> PeriodSummary:
     """Get aggregated summary for a period.
 
@@ -36,6 +41,8 @@ def get_period_summary(
         workspace_name: Workspace name.
         plan: Optional BudgetPlan for determining fixed categories.
         custom_days: Days for custom interval.
+        all_transactions: All transactions for cumulative savings calculation.
+                          If None, uses transactions param.
 
     Returns:
         Aggregated PeriodSummary.
@@ -43,13 +50,20 @@ def get_period_summary(
     period_end = get_period_end(period_start, interval, custom_days)
     fixed_categories = plan.fixed_categories if plan else set()
 
-    return aggregate_transactions(
+    summary = aggregate_transactions(
         transactions=transactions,
         period_start=period_start,
         period_end=period_end,
         workspace_name=workspace_name,
         fixed_categories=fixed_categories,
     )
+
+    # Calculate cumulative savings up to period end (exclusive, so last day of period)
+    txns_for_cumulative = all_transactions if all_transactions is not None else transactions
+    last_day_of_period = period_end - timedelta(days=1)
+    summary.cumulative_savings = calculate_cumulative_savings(txns_for_cumulative, last_day_of_period)
+
+    return summary
 
 
 def calculate_moving_average(
@@ -175,6 +189,7 @@ def analyze_period(
         workspace_name=workspace_name,
         plan=plan,
         custom_days=custom_days,
+        all_transactions=transactions,  # For cumulative savings calculation
     )
 
     # Calculate spending budget

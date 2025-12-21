@@ -83,6 +83,9 @@ def report_command(
     # Get transactions
     tx_repo = ws.storage.get_transaction_repository()
 
+    # For cumulative savings, we need all transactions from the beginning
+    all_transactions = tx_repo.get_all()
+
     # Get historical data for averages
     from fintrack.engine.periods import get_previous_periods
     prev_periods = get_previous_periods(
@@ -93,11 +96,12 @@ def report_command(
     )
 
     earliest = prev_periods[-1] if prev_periods else period_start
-    all_transactions = tx_repo.get_by_period(earliest, period_end)
+    # Filter transactions for historical analysis window
+    window_transactions = [tx for tx in all_transactions if earliest <= tx.date < period_end]
 
     # Get historical summaries
     historical = get_historical_summaries(
-        transactions=all_transactions,
+        transactions=window_transactions,
         period_start=period_start,
         window=ws.config.analysis_window,
         interval=ws.config.interval,
@@ -106,7 +110,7 @@ def report_command(
         custom_days=ws.config.custom_interval_days,
     )
 
-    # Analyze
+    # Analyze (all_transactions passed for cumulative savings)
     summary, analyses = analyze_period(
         transactions=all_transactions,
         period_start=period_start,

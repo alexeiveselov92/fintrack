@@ -81,6 +81,9 @@ def status_command(
     period_end = get_period_end(period_start, ws.config.interval, ws.config.custom_interval_days)
     transactions = tx_repo.get_by_period(period_start, period_end)
 
+    # Get all transactions for cumulative savings calculation
+    all_transactions = tx_repo.get_all()
+
     # Get summary
     summary = get_period_summary(
         transactions=transactions,
@@ -89,6 +92,7 @@ def status_command(
         workspace_name=ws.name,
         plan=plan,
         custom_days=ws.config.custom_interval_days,
+        all_transactions=all_transactions,
     )
 
     # Calculate days remaining
@@ -154,8 +158,9 @@ def status_command(
         target = plan.savings_target
         pct = (saved / target * 100) if target > 0 else Decimal(0)
 
-        console.print(f"  Target:     {format_currency(target, currency):>12}")
-        console.print(f"  Saved:      {format_currency(saved, currency):>12}  ({pct:.1f}%)")
+        console.print(f"  Target:       {format_currency(target, currency):>12}")
+        console.print(f"  Saved:        {format_currency(saved, currency):>12}  ({pct:.1f}%)")
+        console.print(f"  Cumulative:   {format_currency(summary.cumulative_savings, currency):>12}")
 
         if pct >= 100:
             console.print("  [green]✓ Target reached![/green]")

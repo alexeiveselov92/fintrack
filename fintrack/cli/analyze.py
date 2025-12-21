@@ -98,8 +98,10 @@ def analyze_command(
     # Get all transactions
     tx_repo = ws.storage.get_transaction_repository()
 
-    # For historical analysis, we need more transactions
-    # Get transactions for analysis window + current period
+    # For cumulative savings, we need all transactions from the beginning
+    all_transactions = tx_repo.get_all()
+
+    # For historical analysis, we need transactions from the analysis window
     from fintrack.engine.periods import get_previous_periods
     prev_periods = get_previous_periods(
         period_start,
@@ -113,11 +115,12 @@ def analyze_command(
     else:
         earliest = period_start
 
-    all_transactions = tx_repo.get_by_period(earliest, period_end)
+    # Filter transactions for analysis window + current period
+    window_transactions = [tx for tx in all_transactions if earliest <= tx.date < period_end]
 
     # Get historical summaries
     historical = get_historical_summaries(
-        transactions=all_transactions,
+        transactions=window_transactions,
         period_start=period_start,
         window=ws.config.analysis_window,
         interval=ws.config.interval,
@@ -126,7 +129,7 @@ def analyze_command(
         custom_days=ws.config.custom_interval_days,
     )
 
-    # Analyze period
+    # Analyze period (all_transactions passed for cumulative savings)
     summary, analyses = analyze_period(
         transactions=all_transactions,
         period_start=period_start,
@@ -252,8 +255,9 @@ def analyze_command(
     # Savings
     console.print("[bold]Savings[/bold]")
     if plan:
-        console.print(f"  Target:      {format_currency(plan.savings_target, currency):>12}")
-    console.print(f"  Actual:      {format_currency(summary.total_savings, currency):>12}")
+        console.print(f"  Target:       {format_currency(plan.savings_target, currency):>12}")
+    console.print(f"  Actual:       {format_currency(summary.total_savings, currency):>12}")
+    console.print(f"  Cumulative:   {format_currency(summary.cumulative_savings, currency):>12}")
     if plan and plan.savings_target > 0:
         achievement = (summary.total_savings / plan.savings_target * 100)
         console.print(f"  Achievement: {achievement:.1f}%")

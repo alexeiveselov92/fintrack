@@ -301,7 +301,8 @@ class PeriodSummary(BaseModel):
     total_expenses: Decimal = Decimal(0)  # All expenses
     total_fixed_expenses: Decimal = Decimal(0)  # is_fixed=True expenses
     total_flexible_expenses: Decimal = Decimal(0)  # Regular expenses
-    total_savings: Decimal = Decimal(0)  # is_savings=True
+    total_savings: Decimal = Decimal(0)  # is_savings=True (current period)
+    cumulative_savings: Decimal = Decimal(0)  # All-time savings up to period end
     total_deductions: Decimal = Decimal(0)  # is_deduction=True
 
     # Category breakdown

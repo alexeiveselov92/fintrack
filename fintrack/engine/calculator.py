@@ -214,3 +214,25 @@ def calculate_category_share(
     if total <= 0:
         return Decimal(0)
     return (amount / total).quantize(Decimal("0.0001"))
+
+
+def calculate_cumulative_savings(
+    transactions: list[Transaction],
+    up_to_date: date,
+) -> Decimal:
+    """Calculate total savings from beginning up to given date (inclusive).
+
+    Sums all is_savings=True transactions from the start of time
+    up to and including the specified date.
+
+    Args:
+        transactions: All transactions to consider.
+        up_to_date: End date (inclusive) for calculation.
+
+    Returns:
+        Total cumulative savings amount.
+    """
+    return sum(
+        (abs(tx.amount) for tx in transactions if tx.is_savings and tx.date <= up_to_date),
+        Decimal(0),
+    )
