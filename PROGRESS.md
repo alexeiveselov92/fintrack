@@ -1,25 +1,33 @@
 # FinTrack - Progress Report
 
 ## Current State
-**Phase**: Dashboard MVP (v0.3.0)
-**Status**: In Development
+**Phase**: Dashboard Improvements (v0.3.1)
+**Status**: Released
 **Last Updated**: 2025-12-22
-**Current Version**: 0.2.6
+**Current Version**: 0.3.1
 
-## What's In Progress
+## What's New in v0.3.1
 
-### Interactive Dashboard (v0.3.0)
-Replacing the simple HTML report with a comprehensive 5-tab interactive dashboard:
-- **Tab 1: Overview** - KPIs, Cash Reconciliation calculator, Balance/Savings Timeline
-- **Tab 2: Income & Expenses** - Sankey diagram, Treemap, Expenses Timeline
-- **Tab 3: Savings** - Coverage Indicator, Savings vs Planned Timeline
-- **Tab 4: Budget** - Budget vs Actual bars, Alerts
-- **Tab 5: Transactions** - Filterable table with export
+### Bug Fixes
+- **Fixed transaction period filtering** - Transactions from other periods no longer appear in reports
 
-Key new metrics:
-- `uncovered_savings` = max(0, target - actual)
-- `can_cover` = cash_on_hand >= uncovered_savings
-- `true_discretionary` = cash_on_hand - uncovered_savings
+### New Features
+- **Theme support** - Add `theme: "dark"` to workspace.yaml for dark mode dashboard
+- **All-periods mode** - Use `fintrack report --all` to generate dashboard with period switcher dropdown
+- **Plotly range sliders** - Historical charts now have interactive date range sliders
+
+### Visual Improvements
+- **Section badges** - Historical charts labeled with "Historical" badge
+- **Block separation** - Better visual distinction between sections
+- **Budget tab improvements**:
+  - Variance display with absolute and percentage values
+  - >100% exceeded handling with purple bar and badge
+  - Category table with actual%, planned%, variance% columns
+- **Income & Expenses tab**:
+  - KPI cards (Gross Income, Deductions, Net Income, Total Expenses)
+  - Sankey diagram explanation text
+- **Savings tab** - Total under Savings Transactions table
+- **Transactions tab** - Filter summary (count, total, income, expenses)
 
 ---
 

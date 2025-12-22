@@ -15,7 +15,12 @@ from rich.console import Console
 
 from fintrack.core.exceptions import WorkspaceNotFoundError
 from fintrack.core.workspace import load_workspace
-from fintrack.dashboard import DashboardDataProvider, generate_dashboard_html, save_dashboard
+from fintrack.dashboard import (
+    DashboardDataProvider,
+    generate_dashboard_html,
+    generate_all_periods_dashboard_html,
+    save_dashboard,
+)
 from fintrack.engine.periods import (
     format_period,
     get_current_period,
@@ -31,6 +36,12 @@ def report_command(
         "--period",
         "-p",
         help="Period to report (default: current period)",
+    ),
+    all_periods: bool = typer.Option(
+        False,
+        "--all",
+        "-a",
+        help="Generate dashboard with all periods (switchable via dropdown)",
     ),
     output: Path = typer.Option(
         None,
@@ -53,6 +64,8 @@ def report_command(
     - Savings: Coverage Indicator, Savings vs Target Timeline
     - Budget: Budget vs Actual bars, Category breakdown
     - Transactions: Filterable table with export
+
+    Use --all to generate a dashboard with period switcher to view all periods.
     """
     try:
         ws = load_workspace(workspace)
@@ -63,7 +76,31 @@ def report_command(
         )
         raise typer.Exit(1)
 
-    # Determine period
+    provider = DashboardDataProvider(ws)
+
+    if all_periods:
+        # Generate all-periods dashboard
+        console.print("[blue]Generating all-periods dashboard...[/blue]")
+        all_data = provider.get_all_periods_data()
+
+        if not all_data:
+            console.print("[yellow]No transactions found in any period[/yellow]")
+            raise typer.Exit(0)
+
+        html = generate_all_periods_dashboard_html(all_data)
+
+        # Determine output path
+        if output:
+            output_path = output
+        else:
+            output_path = ws.reports_dir / "dashboard.html"
+
+        save_dashboard(html, output_path)
+        console.print(f"[green]All-periods dashboard generated:[/green] {output_path}")
+        console.print(f"Open in browser: file://{output_path.absolute()}")
+        return
+
+    # Single period mode
     if period:
         try:
             period_start = parse_period(period, ws.config.interval)
@@ -78,7 +115,6 @@ def report_command(
     period_str = format_period(period_start, ws.config.interval)
 
     # Create data provider and get dashboard data
-    provider = DashboardDataProvider(ws)
     data = provider.get_dashboard_data(period_start)
 
     if data.current_period_summary and data.current_period_summary.transaction_count == 0:

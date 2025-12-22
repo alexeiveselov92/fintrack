@@ -6,7 +6,7 @@ All financial data structures are defined here using Pydantic v2 for validation.
 from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Annotated
+from typing import Annotated, Literal
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field, computed_field, model_validator
@@ -267,6 +267,8 @@ class WorkspaceConfig(BaseModel):
     )
     display_currencies: list[str] = Field(default_factory=list)
 
+    theme: Literal["light", "dark"] = "light"
+
     transactions_dir: str = "transactions"
     plans_dir: str = "plans"
     reports_dir: str = "reports"
@@ -448,6 +450,7 @@ class DashboardData(BaseModel):
     currency: str
     interval: IntervalType
     generated_at: datetime
+    theme: Literal["light", "dark"] = "light"
 
     # Current period info
     current_period_label: str

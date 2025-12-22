@@ -12,10 +12,15 @@ Tabs:
 """
 
 from fintrack.dashboard.data_provider import DashboardDataProvider
-from fintrack.dashboard.generator import generate_dashboard_html, save_dashboard
+from fintrack.dashboard.generator import (
+    generate_all_periods_dashboard_html,
+    generate_dashboard_html,
+    save_dashboard,
+)
 
 __all__ = [
     "DashboardDataProvider",
+    "generate_all_periods_dashboard_html",
     "generate_dashboard_html",
     "save_dashboard",
 ]

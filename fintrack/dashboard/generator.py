@@ -123,8 +123,13 @@ def generate_dashboard_html(data: DashboardData) -> str:
             "is_fixed": tx.is_fixed,
         })
 
+    # Pre-compute savings transactions for Savings tab
+    savings_rows_html, savings_total = _render_savings_transactions(data.transactions, currency)
+    savings_total_formatted = _format_currency(savings_total, currency)
+    savings_total_class = "positive" if savings_total >= 0 else "negative"
+
     html = f"""<!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="{data.theme}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -146,28 +151,58 @@ def generate_dashboard_html(data: DashboardData) -> str:
             --gray-700: #374151;
             --gray-800: #1f2937;
             --gray-900: #111827;
+            --bg-primary: #ffffff;
+            --bg-secondary: #f9fafb;
+            --text-primary: #1f2937;
+            --text-secondary: #6b7280;
+            --border-color: #e5e7eb;
+            --card-bg: #ffffff;
+            --card-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }}
+        [data-theme="dark"] {{
+            --primary: #3b82f6;
+            --primary-light: #60a5fa;
+            --success: #22c55e;
+            --warning: #eab308;
+            --danger: #ef4444;
+            --gray-50: #111827;
+            --gray-100: #1f2937;
+            --gray-200: #374151;
+            --gray-300: #4b5563;
+            --gray-500: #9ca3af;
+            --gray-600: #d1d5db;
+            --gray-700: #e5e7eb;
+            --gray-800: #f3f4f6;
+            --gray-900: #f9fafb;
+            --bg-primary: #111827;
+            --bg-secondary: #1f2937;
+            --text-primary: #f9fafb;
+            --text-secondary: #9ca3af;
+            --border-color: #374151;
+            --card-bg: #1f2937;
+            --card-shadow: 0 1px 3px rgba(0,0,0,0.3);
         }}
         * {{ box-sizing: border-box; margin: 0; padding: 0; }}
         body {{
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             line-height: 1.5;
-            color: var(--gray-800);
-            background: var(--gray-50);
+            color: var(--text-primary);
+            background: var(--bg-secondary);
         }}
         .header {{
-            background: white;
-            border-bottom: 1px solid var(--gray-200);
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border-color);
             padding: 1rem 2rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }}
         .header h1 {{ color: var(--primary); font-size: 1.5rem; }}
-        .header .meta {{ color: var(--gray-500); font-size: 0.875rem; }}
+        .header .meta {{ color: var(--text-secondary); font-size: 0.875rem; }}
 
         .tabs {{
-            background: white;
-            border-bottom: 1px solid var(--gray-200);
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border-color);
             display: flex;
             padding: 0 2rem;
             gap: 0;
@@ -176,7 +211,7 @@ def generate_dashboard_html(data: DashboardData) -> str:
             padding: 1rem 1.5rem;
             cursor: pointer;
             border-bottom: 2px solid transparent;
-            color: var(--gray-600);
+            color: var(--text-secondary);
             font-weight: 500;
             transition: all 0.2s;
         }}
@@ -197,12 +232,12 @@ def generate_dashboard_html(data: DashboardData) -> str:
             margin-bottom: 2rem;
         }}
         .card {{
-            background: white;
+            background: var(--card-bg);
             border-radius: 12px;
             padding: 1.5rem;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            box-shadow: var(--card-shadow);
         }}
-        .card-label {{ font-size: 0.875rem; color: var(--gray-500); margin-bottom: 0.25rem; }}
+        .card-label {{ font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.25rem; }}
         .card-value {{ font-size: 1.75rem; font-weight: 600; }}
         .card-value.positive {{ color: var(--success); }}
         .card-value.negative {{ color: var(--danger); }}
@@ -211,10 +246,10 @@ def generate_dashboard_html(data: DashboardData) -> str:
         .card-trend.down {{ color: var(--danger); }}
 
         .coverage-indicator {{
-            background: white;
+            background: var(--card-bg);
             border-radius: 12px;
             padding: 1.5rem;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            box-shadow: var(--card-shadow);
             margin-bottom: 2rem;
         }}
         .coverage-indicator.ok {{ border-left: 4px solid var(--success); }}
@@ -226,32 +261,32 @@ def generate_dashboard_html(data: DashboardData) -> str:
         .coverage-status.warning .icon {{ color: var(--danger); }}
 
         .chart-container {{
-            background: white;
+            background: var(--card-bg);
             border-radius: 12px;
             padding: 1.5rem;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            box-shadow: var(--card-shadow);
             margin-bottom: 2rem;
         }}
-        .chart-title {{ font-size: 1rem; font-weight: 600; margin-bottom: 1rem; color: var(--gray-700); }}
+        .chart-title {{ font-size: 1rem; font-weight: 600; margin-bottom: 1rem; color: var(--text-primary); }}
 
         .section-title {{
             font-size: 1.25rem;
             font-weight: 600;
             margin: 2rem 0 1rem;
-            color: var(--gray-800);
+            color: var(--text-primary);
         }}
 
         table {{
             width: 100%;
             border-collapse: collapse;
-            background: white;
+            background: var(--card-bg);
             border-radius: 12px;
             overflow: hidden;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            box-shadow: var(--card-shadow);
             margin-bottom: 2rem;
         }}
-        th, td {{ padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--gray-200); }}
-        th {{ background: var(--gray-50); font-weight: 600; color: var(--gray-700); }}
+        th, td {{ padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border-color); }}
+        th {{ background: var(--bg-secondary); font-weight: 600; color: var(--text-primary); }}
         td.number {{ text-align: right; font-variant-numeric: tabular-nums; }}
         tr:last-child td {{ border-bottom: none; }}
         .positive {{ color: var(--success); }}
@@ -263,11 +298,11 @@ def generate_dashboard_html(data: DashboardData) -> str:
             gap: 1rem;
             margin-bottom: 0.75rem;
         }}
-        .budget-bar .label {{ width: 150px; font-weight: 500; }}
+        .budget-bar .label {{ width: 150px; font-weight: 500; color: var(--text-primary); }}
         .budget-bar .bar-container {{
             flex: 1;
             height: 24px;
-            background: var(--gray-200);
+            background: var(--border-color);
             border-radius: 4px;
             overflow: hidden;
             position: relative;
@@ -279,13 +314,31 @@ def generate_dashboard_html(data: DashboardData) -> str:
         .budget-bar .bar.ok {{ background: var(--success); }}
         .budget-bar .bar.warning {{ background: var(--warning); }}
         .budget-bar .bar.danger {{ background: var(--danger); }}
-        .budget-bar .value {{ width: 150px; text-align: right; font-variant-numeric: tabular-nums; }}
+        .budget-bar .bar.exceeded {{ background: #8b5cf6; }}
+        .budget-bar .value {{ width: 200px; text-align: right; font-variant-numeric: tabular-nums; font-size: 0.9rem; }}
+        .budget-bar .value .actual {{ font-weight: 600; }}
+        .budget-bar .value .planned {{ color: var(--text-secondary); }}
+        .budget-bar .value .diff {{ font-size: 0.8rem; margin-left: 0.25rem; }}
+        .budget-bar .value .diff.positive {{ color: var(--success); }}
+        .budget-bar .value .diff.negative {{ color: var(--danger); }}
+        .budget-bar .value .diff.exceeded {{ color: #8b5cf6; }}
+        .budget-badge {{
+            display: inline-block;
+            padding: 0.125rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            margin-left: 0.5rem;
+        }}
+        .budget-badge.exceeded {{ background: #ede9fe; color: #6b21a8; }}
+        .budget-badge.under {{ background: #dcfce7; color: #166534; }}
+        .budget-badge.over {{ background: #fee2e2; color: #991b1b; }}
 
         .cash-reconciliation {{
-            background: white;
+            background: var(--card-bg);
             border-radius: 12px;
             padding: 1.5rem;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            box-shadow: var(--card-shadow);
             margin-bottom: 2rem;
         }}
         .cash-input-row {{
@@ -296,8 +349,10 @@ def generate_dashboard_html(data: DashboardData) -> str:
         }}
         .cash-input-row input {{
             padding: 0.5rem;
-            border: 1px solid var(--gray-300);
+            border: 1px solid var(--border-color);
             border-radius: 4px;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
         }}
         .cash-input-row input[type="text"] {{ flex: 1; }}
         .cash-input-row input[type="number"] {{ width: 150px; }}
@@ -308,11 +363,11 @@ def generate_dashboard_html(data: DashboardData) -> str:
             cursor: pointer;
         }}
         .btn-add {{ background: var(--primary); color: white; }}
-        .btn-remove {{ background: var(--gray-200); color: var(--gray-700); }}
+        .btn-remove {{ background: var(--border-color); color: var(--text-secondary); }}
         .cash-total {{
             margin-top: 1rem;
             padding-top: 1rem;
-            border-top: 1px solid var(--gray-200);
+            border-top: 1px solid var(--border-color);
             display: flex;
             justify-content: space-between;
             font-weight: 600;
@@ -327,8 +382,10 @@ def generate_dashboard_html(data: DashboardData) -> str:
         }}
         .filters select, .filters input {{
             padding: 0.5rem;
-            border: 1px solid var(--gray-300);
+            border: 1px solid var(--border-color);
             border-radius: 4px;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
         }}
 
         .export-btn {{
@@ -345,6 +402,70 @@ def generate_dashboard_html(data: DashboardData) -> str:
         .flag.deduction {{ background: #fef3c7; color: #92400e; }}
         .flag.fixed {{ background: #f3e8ff; color: #6b21a8; }}
 
+        .filter-summary {{
+            padding: 0.75rem 1rem;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }}
+        .filter-summary .stat {{ font-weight: 500; }}
+        .filter-summary .stat-value {{ font-weight: 600; color: var(--primary); }}
+
+        .section-block {{
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--card-shadow);
+            border-left: 4px solid var(--primary);
+        }}
+        .section-block.historical {{
+            border-left-color: #6366f1;
+        }}
+        .section-block.current-period {{
+            border-left-color: var(--success);
+        }}
+        .section-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }}
+        .section-header h3 {{
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }}
+        .section-badge {{
+            display: inline-block;
+            font-size: 0.7rem;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }}
+        .section-badge.historical {{
+            background: #e0e7ff;
+            color: #3730a3;
+        }}
+        .section-badge.current {{
+            background: #d1fae5;
+            color: #065f46;
+        }}
+        [data-theme="dark"] .section-badge.historical {{
+            background: #312e81;
+            color: #c7d2fe;
+        }}
+        [data-theme="dark"] .section-badge.current {{
+            background: #064e3b;
+            color: #a7f3d0;
+        }}
+
         .period-selector {{
             display: flex;
             gap: 1rem;
@@ -353,9 +474,11 @@ def generate_dashboard_html(data: DashboardData) -> str:
         }}
         .period-selector select {{
             padding: 0.5rem 1rem;
-            border: 1px solid var(--gray-300);
+            border: 1px solid var(--border-color);
             border-radius: 4px;
             font-size: 1rem;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
         }}
 
         @media (max-width: 768px) {{
@@ -436,21 +559,49 @@ def generate_dashboard_html(data: DashboardData) -> str:
                 </div>
             </div>
 
-            <div class="chart-container">
-                <div class="chart-title">Balance & Savings Timeline</div>
+            <div class="section-block historical">
+                <div class="section-header">
+                    <h3>Balance & Savings Timeline</h3>
+                    <span class="section-badge historical">Historical</span>
+                </div>
                 <div id="chart-timeline"></div>
             </div>
 
-            <div class="chart-container">
-                <div class="chart-title">{interval_label}ly Cash Flow</div>
+            <div class="section-block historical">
+                <div class="section-header">
+                    <h3>{interval_label}ly Cash Flow</h3>
+                    <span class="section-badge historical">Historical</span>
+                </div>
                 <div id="chart-cashflow"></div>
             </div>
         </div>
 
         <!-- ===== INCOME & EXPENSES TAB ===== -->
         <div id="income-expenses" class="tab-content">
+            <div class="cards">
+                <div class="card">
+                    <div class="card-label">Gross Income</div>
+                    <div class="card-value positive">{_format_currency(data.plan.gross_income if data.plan else (data.current_period_summary.total_income + data.current_period_summary.total_deductions if data.current_period_summary else Decimal(0)), currency)}</div>
+                </div>
+                <div class="card">
+                    <div class="card-label">Deductions</div>
+                    <div class="card-value">{_format_currency(data.current_period_summary.total_deductions if data.current_period_summary else Decimal(0), currency)}</div>
+                </div>
+                <div class="card">
+                    <div class="card-label">Net Income</div>
+                    <div class="card-value positive">{_format_currency(data.current_period_summary.total_income if data.current_period_summary else Decimal(0), currency)}</div>
+                </div>
+                <div class="card">
+                    <div class="card-label">Total Expenses</div>
+                    <div class="card-value negative">{_format_currency(data.current_period_summary.total_expenses if data.current_period_summary else Decimal(0), currency)}</div>
+                </div>
+            </div>
+
             <div class="chart-container">
-                <div class="chart-title">Income Flow</div>
+                <div class="chart-title">Income Flow (Sankey Diagram)</div>
+                <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem;">
+                    Shows money flow from Gross Income through deductions to Net Income, then to Fixed Expenses, Flexible Expenses, and Savings.
+                </p>
                 <div id="chart-sankey"></div>
             </div>
 
@@ -459,8 +610,11 @@ def generate_dashboard_html(data: DashboardData) -> str:
                 <div id="chart-treemap"></div>
             </div>
 
-            <div class="chart-container">
-                <div class="chart-title">Expenses Timeline (Fixed vs Flexible)</div>
+            <div class="section-block historical">
+                <div class="section-header">
+                    <h3>Expenses Timeline (Fixed vs Flexible)</h3>
+                    <span class="section-badge historical">Historical</span>
+                </div>
                 <div id="chart-expenses-timeline"></div>
             </div>
 
@@ -509,8 +663,11 @@ def generate_dashboard_html(data: DashboardData) -> str:
                 </div>
             </div>
 
-            <div class="chart-container">
-                <div class="chart-title">Savings vs Target Timeline</div>
+            <div class="section-block historical">
+                <div class="section-header">
+                    <h3>Savings vs Target Timeline</h3>
+                    <span class="section-badge historical">Historical</span>
+                </div>
                 <div id="chart-savings-timeline"></div>
             </div>
 
@@ -525,8 +682,14 @@ def generate_dashboard_html(data: DashboardData) -> str:
                     </tr>
                 </thead>
                 <tbody>
-                    {_render_savings_transactions(data.transactions, currency)}
+                    {savings_rows_html}
                 </tbody>
+                <tfoot>
+                    <tr style="background: var(--bg-secondary); font-weight: 600;">
+                        <td colspan="3">Total (This Period)</td>
+                        <td class="number {savings_total_class}">{savings_total_formatted}</td>
+                    </tr>
+                </tfoot>
             </table>
         </div>
 
@@ -551,6 +714,13 @@ def generate_dashboard_html(data: DashboardData) -> str:
                 </select>
                 <input type="text" id="filter-search" placeholder="Search description...">
                 <button class="export-btn" onclick="exportCSV()">Export CSV</button>
+            </div>
+
+            <div class="filter-summary">
+                <span class="stat">Showing: <span id="filtered-count" class="stat-value">{len(data.transactions)}</span> transactions</span>
+                <span class="stat">Total: <span id="filtered-total" class="stat-value">{currency} 0.00</span></span>
+                <span class="stat">Income: <span id="filtered-income" class="stat-value positive">{currency} 0.00</span></span>
+                <span class="stat">Expenses: <span id="filtered-expenses" class="stat-value negative">{currency} 0.00</span></span>
             </div>
 
             <table id="transactions-table">
@@ -635,28 +805,36 @@ def generate_dashboard_html(data: DashboardData) -> str:
         const timelineFixed = {json.dumps(timeline_fixed)};
         const timelineFlexible = {json.dumps(timeline_flexible)};
 
-        // Timeline chart
+        // Timeline chart (with range slider for date filtering)
         Plotly.newPlot('chart-timeline', [
             {{ x: timelineLabels, y: timelineBalance, name: 'Balance', type: 'scatter', fill: 'tozeroy', line: {{ color: '#3b82f6' }} }},
             {{ x: timelineLabels, y: timelineSavings, name: 'Savings', type: 'scatter', fill: 'tozeroy', line: {{ color: '#16a34a' }} }},
             {{ x: timelineLabels, y: timelineAvailable, name: 'Available', type: 'scatter', line: {{ color: '#8b5cf6', dash: 'dash' }} }},
         ], {{
-            margin: {{ t: 20, r: 20, b: 40, l: 60 }},
+            margin: {{ t: 20, r: 20, b: 80, l: 60 }},
             legend: {{ orientation: 'h', y: 1.1 }},
-            xaxis: {{ title: '{interval_label}' }},
+            xaxis: {{
+                title: '{interval_label}',
+                rangeslider: {{ visible: true, thickness: 0.1 }},
+                type: 'category'
+            }},
             yaxis: {{ title: 'Amount ({currency})' }},
         }}, {{ responsive: true }});
 
-        // Cash flow chart
+        // Cash flow chart (with range slider)
         Plotly.newPlot('chart-cashflow', [
             {{ x: timelineLabels, y: timelineIncome, name: 'Income', type: 'bar', marker: {{ color: '#16a34a' }} }},
             {{ x: timelineLabels, y: timelineExpenses.map(v => -v), name: 'Expenses', type: 'bar', marker: {{ color: '#dc2626' }} }},
             {{ x: timelineLabels, y: timelineNet, name: 'Net Flow', type: 'scatter', line: {{ color: '#3b82f6' }} }},
         ], {{
             barmode: 'relative',
-            margin: {{ t: 20, r: 20, b: 40, l: 60 }},
+            margin: {{ t: 20, r: 20, b: 80, l: 60 }},
             legend: {{ orientation: 'h', y: 1.1 }},
-            xaxis: {{ title: '{interval_label}' }},
+            xaxis: {{
+                title: '{interval_label}',
+                rangeslider: {{ visible: true, thickness: 0.1 }},
+                type: 'category'
+            }},
             yaxis: {{ title: 'Amount ({currency})' }},
         }}, {{ responsive: true }});
 
@@ -689,26 +867,34 @@ def generate_dashboard_html(data: DashboardData) -> str:
             margin: {{ t: 20, r: 20, b: 20, l: 20 }},
         }}, {{ responsive: true }});
 
-        // Expenses timeline
+        // Expenses timeline (with range slider)
         Plotly.newPlot('chart-expenses-timeline', [
             {{ x: timelineLabels, y: timelineFixed, name: 'Fixed', type: 'bar', marker: {{ color: '#6b7280' }} }},
             {{ x: timelineLabels, y: timelineFlexible, name: 'Flexible', type: 'bar', marker: {{ color: '#3b82f6' }} }},
         ], {{
             barmode: 'stack',
-            margin: {{ t: 20, r: 20, b: 40, l: 60 }},
+            margin: {{ t: 20, r: 20, b: 80, l: 60 }},
             legend: {{ orientation: 'h', y: 1.1 }},
-            xaxis: {{ title: '{interval_label}' }},
+            xaxis: {{
+                title: '{interval_label}',
+                rangeslider: {{ visible: true, thickness: 0.1 }},
+                type: 'category'
+            }},
             yaxis: {{ title: 'Expenses ({currency})' }},
         }}, {{ responsive: true }});
 
-        // Savings timeline
+        // Savings timeline (with range slider)
         Plotly.newPlot('chart-savings-timeline', [
             {{ x: timelineLabels, y: timelineSavings, name: 'Actual Savings', type: 'scatter', fill: 'tozeroy', line: {{ color: '#16a34a' }} }},
             {{ x: timelineLabels, y: timelineTarget, name: 'Target', type: 'scatter', line: {{ color: '#dc2626', dash: 'dash' }} }},
         ], {{
-            margin: {{ t: 20, r: 20, b: 40, l: 60 }},
+            margin: {{ t: 20, r: 20, b: 80, l: 60 }},
             legend: {{ orientation: 'h', y: 1.1 }},
-            xaxis: {{ title: '{interval_label}' }},
+            xaxis: {{
+                title: '{interval_label}',
+                rangeslider: {{ visible: true, thickness: 0.1 }},
+                type: 'category'
+            }},
             yaxis: {{ title: 'Cumulative Savings ({currency})' }},
         }}, {{ responsive: true }});
 
@@ -736,6 +922,20 @@ def generate_dashboard_html(data: DashboardData) -> str:
             }});
         }}
 
+        function updateFilterSummary(data) {{
+            const total = data.reduce((sum, tx) => sum + tx.amount, 0);
+            const income = data.filter(tx => tx.amount > 0 && !tx.is_savings).reduce((sum, tx) => sum + tx.amount, 0);
+            const expenses = data.filter(tx => tx.amount < 0 && !tx.is_savings && !tx.is_deduction).reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+
+            document.getElementById('filtered-count').textContent = data.length;
+            document.getElementById('filtered-total').textContent = currency + ' ' + total.toFixed(2);
+            document.getElementById('filtered-income').textContent = currency + ' ' + income.toFixed(2);
+            document.getElementById('filtered-expenses').textContent = currency + ' ' + expenses.toFixed(2);
+
+            // Update colors
+            document.getElementById('filtered-total').className = total >= 0 ? 'stat-value positive' : 'stat-value negative';
+        }}
+
         function filterTransactions() {{
             const category = document.getElementById('filter-category').value;
             const type = document.getElementById('filter-type').value;
@@ -751,6 +951,7 @@ def generate_dashboard_html(data: DashboardData) -> str:
                 return true;
             }});
             renderTransactions(filtered);
+            updateFilterSummary(filtered);
         }}
 
         document.getElementById('filter-category').addEventListener('change', filterTransactions);
@@ -758,6 +959,7 @@ def generate_dashboard_html(data: DashboardData) -> str:
         document.getElementById('filter-search').addEventListener('input', filterTransactions);
 
         renderTransactions(transactionsData);
+        updateFilterSummary(transactionsData);
 
         function exportCSV() {{
             let csv = 'Date,Category,Description,Amount,Savings,Deduction,Fixed\\n';
@@ -806,10 +1008,16 @@ def _render_expense_rows(
     return "\n".join(rows)
 
 
-def _render_savings_transactions(transactions: list, currency: str) -> str:
-    """Render savings transactions table rows."""
+def _render_savings_transactions(transactions: list, currency: str) -> tuple[str, Decimal]:
+    """Render savings transactions table rows with total.
+
+    Returns:
+        Tuple of (HTML rows, total amount).
+    """
     savings_txs = [tx for tx in transactions if tx.is_savings]
     savings_txs.sort(key=lambda x: x.date, reverse=True)
+
+    total = sum(tx.amount for tx in savings_txs)
 
     rows = []
     for tx in savings_txs[:20]:
@@ -822,7 +1030,83 @@ def _render_savings_transactions(transactions: list, currency: str) -> str:
                 <td class="number {css_class}">{_format_currency(tx.amount, currency)}</td>
             </tr>
         """)
-    return "\n".join(rows) if rows else "<tr><td colspan='4'>No savings transactions</td></tr>"
+
+    if not rows:
+        return "<tr><td colspan='4'>No savings transactions</td></tr>", Decimal(0)
+
+    return "\n".join(rows), total
+
+
+def _render_budget_bar(
+    label: str,
+    actual: Decimal,
+    planned: Decimal,
+    currency: str,
+    is_target: bool = False,
+) -> str:
+    """Render a budget progress bar with variance info.
+
+    Args:
+        label: Bar label.
+        actual: Actual amount.
+        planned: Planned amount.
+        currency: Currency code.
+        is_target: If True, higher actual is better (e.g., income, savings).
+                   If False, lower actual is better (e.g., expenses).
+    """
+    if planned == 0:
+        return ""
+
+    pct = float(actual / planned * 100)
+    diff = actual - planned
+    diff_pct = float(diff / planned * 100) if planned else 0
+
+    # Determine bar class and badge
+    if is_target:
+        # For targets (income, savings): higher is better
+        if pct >= 100:
+            bar_class = "exceeded" if pct > 100 else "ok"
+            badge_html = f'<span class="budget-badge exceeded">\u2713 Exceeded</span>' if pct > 100 else ''
+            diff_class = "exceeded" if pct > 100 else "positive"
+        elif pct >= 80:
+            bar_class = "warning"
+            badge_html = ""
+            diff_class = "negative"
+        else:
+            bar_class = "danger"
+            badge_html = ""
+            diff_class = "negative"
+    else:
+        # For expenses: lower is better
+        if pct <= 100:
+            bar_class = "ok"
+            badge_html = f'<span class="budget-badge under">\u2713 Under</span>' if pct < 90 else ''
+            diff_class = "positive"
+        else:
+            bar_class = "danger"
+            badge_html = f'<span class="budget-badge over">\u26a0 Over</span>'
+            diff_class = "negative"
+
+    # Format diff text
+    if diff >= 0:
+        diff_text = f"+{_format_currency(diff, currency)}, +{diff_pct:.1f}%"
+    else:
+        diff_text = f"{_format_currency(diff, currency)}, {diff_pct:.1f}%"
+
+    return f"""
+        <div class="budget-bar">
+            <div class="label">{label}</div>
+            <div class="bar-container">
+                <div class="bar {bar_class}" style="width: {min(pct, 100)}%"></div>
+            </div>
+            <div class="value">
+                <span class="actual">{_format_currency(actual, currency)}</span> /
+                <span class="planned">{_format_currency(planned, currency)}</span>
+                <span class="diff {diff_class}">({diff_text})</span>
+                {badge_html}
+            </div>
+        </div>
+    """
 
 
 def _render_budget_section(data: DashboardData, currency: str) -> str:
@@ -838,84 +1122,37 @@ def _render_budget_section(data: DashboardData, currency: str) -> str:
     # Income section
     if plan.gross_income > 0:
         actual_income = summary.total_income if summary else Decimal(0)
-        pct = float(actual_income / plan.gross_income * 100) if plan.gross_income > 0 else 0
-        bar_class = "ok" if pct >= 100 else "warning" if pct >= 80 else "danger"
-        html += f"""
-        <h2 class="section-title">Income</h2>
-        <div class="budget-bar">
-            <div class="label">Gross Income</div>
-            <div class="bar-container">
-                <div class="bar {bar_class}" style="width: {min(pct, 100)}%"></div>
-            </div>
-            <div class="value">{_format_currency(actual_income, currency)} / {_format_currency(plan.gross_income, currency)}</div>
-        </div>
-        """
+        html += '<h2 class="section-title">Income</h2>'
+        html += _render_budget_bar("Gross Income", actual_income, plan.gross_income, currency, is_target=True)
 
     # Deductions section
     if plan.total_deductions > 0:
         actual_ded = summary.total_deductions if summary else Decimal(0)
-        pct = float(actual_ded / plan.total_deductions * 100) if plan.total_deductions > 0 else 0
-        bar_class = "ok" if pct <= 100 else "danger"
-        html += f"""
-        <h2 class="section-title">Deductions</h2>
-        <div class="budget-bar">
-            <div class="label">Total Deductions</div>
-            <div class="bar-container">
-                <div class="bar {bar_class}" style="width: {min(pct, 100)}%"></div>
-            </div>
-            <div class="value">{_format_currency(actual_ded, currency)} / {_format_currency(plan.total_deductions, currency)}</div>
-        </div>
-        """
+        html += '<h2 class="section-title">Deductions</h2>'
+        html += _render_budget_bar("Total Deductions", actual_ded, plan.total_deductions, currency, is_target=False)
 
     # Fixed expenses section
     if plan.total_fixed_expenses > 0:
         actual_fixed = summary.total_fixed_expenses if summary else Decimal(0)
-        pct = float(actual_fixed / plan.total_fixed_expenses * 100) if plan.total_fixed_expenses > 0 else 0
-        bar_class = "ok" if pct <= 100 else "danger"
-        html += f"""
-        <h2 class="section-title">Fixed Expenses</h2>
-        <div class="budget-bar">
-            <div class="label">Total Fixed</div>
-            <div class="bar-container">
-                <div class="bar {bar_class}" style="width: {min(pct, 100)}%"></div>
-            </div>
-            <div class="value">{_format_currency(actual_fixed, currency)} / {_format_currency(plan.total_fixed_expenses, currency)}</div>
-        </div>
-        """
+        html += '<h2 class="section-title">Fixed Expenses</h2>'
+        html += _render_budget_bar("Total Fixed", actual_fixed, plan.total_fixed_expenses, currency, is_target=False)
 
     # Flexible spending section
     if plan.disposable_income > 0:
         actual_flex = summary.total_flexible_expenses if summary else Decimal(0)
-        pct = float(actual_flex / plan.disposable_income * 100) if plan.disposable_income > 0 else 0
-        bar_class = "ok" if pct <= 80 else "warning" if pct <= 100 else "danger"
-        html += f"""
-        <h2 class="section-title">Flexible Spending</h2>
-        <div class="budget-bar">
-            <div class="label">Disposable</div>
-            <div class="bar-container">
-                <div class="bar {bar_class}" style="width: {min(pct, 100)}%"></div>
-            </div>
-            <div class="value">{_format_currency(actual_flex, currency)} / {_format_currency(plan.disposable_income, currency)}</div>
-        </div>
-        """
+        html += '<h2 class="section-title">Flexible Spending</h2>'
+        html += _render_budget_bar("Disposable", actual_flex, plan.disposable_income, currency, is_target=False)
 
     # Savings section
     if plan.savings_target > 0:
         actual_savings = summary.total_savings if summary else Decimal(0)
-        pct = float(actual_savings / plan.savings_target * 100) if plan.savings_target > 0 else 0
-        bar_class = "ok" if pct >= 100 else "warning" if pct >= 50 else "danger"
-        html += f"""
-        <h2 class="section-title">Savings</h2>
-        <div class="budget-bar">
-            <div class="label">Savings Target</div>
-            <div class="bar-container">
-                <div class="bar {bar_class}" style="width: {min(pct, 100)}%"></div>
-            </div>
-            <div class="value">{_format_currency(actual_savings, currency)} / {_format_currency(plan.savings_target, currency)}</div>
-        </div>
-        """
+        html += '<h2 class="section-title">Savings</h2>'
+        html += _render_budget_bar("Savings Target", actual_savings, plan.savings_target, currency, is_target=True)
 
-    # Category breakdown table
+    # Category breakdown table - with percentages
+    total_actual = sum(c.actual_amount for c in data.categories if c.actual_amount > 0)
+    total_planned = sum(c.planned_amount for c in data.categories if c.planned_amount)
+
     html += """
     <h2 class="section-title">Category Breakdown</h2>
     <table>
@@ -923,8 +1160,11 @@ def _render_budget_section(data: DashboardData, currency: str) -> str:
             <tr>
                 <th>Category</th>
                 <th class="number">Actual</th>
+                <th class="number">%</th>
                 <th class="number">Planned</th>
+                <th class="number">%</th>
                 <th class="number">Variance</th>
+                <th class="number">Var %</th>
             </tr>
         </thead>
         <tbody>
@@ -933,24 +1173,38 @@ def _render_budget_section(data: DashboardData, currency: str) -> str:
     for cat in sorted(data.categories, key=lambda x: x.actual_amount, reverse=True):
         if cat.actual_amount == 0 and not cat.planned_amount:
             continue
+
+        # Calculate percentages
+        actual_pct = float(cat.actual_amount / total_actual * 100) if total_actual > 0 else 0
+        planned_pct = float(cat.planned_amount / total_planned * 100) if cat.planned_amount and total_planned > 0 else 0
+
+        # Variance
         variance_class = ""
         variance_text = "-"
+        variance_pct_text = "-"
         if cat.variance_vs_plan is not None:
+            var_pct = float(cat.variance_vs_plan / cat.planned_amount * 100) if cat.planned_amount else 0
             if cat.variance_vs_plan > 0:
                 variance_class = "positive"
                 variance_text = f"+{_format_currency(cat.variance_vs_plan, currency)}"
+                variance_pct_text = f"+{var_pct:.1f}%"
             elif cat.variance_vs_plan < 0:
                 variance_class = "negative"
                 variance_text = _format_currency(cat.variance_vs_plan, currency)
+                variance_pct_text = f"{var_pct:.1f}%"
             else:
                 variance_text = _format_currency(Decimal(0), currency)
+                variance_pct_text = "0.0%"
 
         html += f"""
             <tr>
                 <td>{cat.category}{' <span class="flag fixed">Fixed</span>' if cat.is_fixed else ''}</td>
                 <td class="number">{_format_currency(cat.actual_amount, currency)}</td>
+                <td class="number">{actual_pct:.1f}%</td>
                 <td class="number">{_format_currency(cat.planned_amount, currency) if cat.planned_amount else '-'}</td>
+                <td class="number">{f'{planned_pct:.1f}%' if cat.planned_amount else '-'}</td>
                 <td class="number {variance_class}">{variance_text}</td>
+                <td class="number {variance_class}">{variance_pct_text}</td>
             </tr>
         """
 
@@ -977,3 +1231,355 @@ def save_dashboard(html: str, output_path: Path) -> None:
     """
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(html, encoding="utf-8")
+
+
+def generate_all_periods_dashboard_html(all_data: dict[str, "DashboardData"]) -> str:
+    """Generate dashboard HTML with all periods data and period switcher.
+
+    Args:
+        all_data: Dict mapping period labels to DashboardData.
+
+    Returns:
+        Complete HTML string with period switcher dropdown.
+    """
+    if not all_data:
+        return "<html><body><p>No data available</p></body></html>"
+
+    # Get sorted period labels (most recent first)
+    periods = sorted(all_data.keys(), reverse=True)
+    current_period = periods[0]
+    current_data = all_data[current_period]
+
+    currency = current_data.currency
+    interval_label = _get_interval_label(current_data.interval)
+    theme = current_data.theme
+
+    # Prepare data for all periods (for JSON embedding)
+    all_periods_json: dict = {}
+    for period_label, data in all_data.items():
+        # Prepare transactions for this period
+        tx_list = []
+        for tx in sorted(data.transactions, key=lambda x: x.date, reverse=True)[:100]:
+            tx_list.append({
+                "date": tx.date.isoformat(),
+                "category": tx.category,
+                "amount": float(tx.amount),
+                "description": tx.description or "",
+                "is_savings": tx.is_savings,
+                "is_deduction": tx.is_deduction,
+                "is_fixed": tx.is_fixed,
+            })
+
+        # Prepare KPIs
+        summary = data.current_period_summary
+        all_periods_json[period_label] = {
+            "kpis": {
+                "current_balance": float(data.current_balance),
+                "total_savings": float(data.total_savings),
+                "available_funds": float(data.available_funds),
+                "savings_gap": float(data.savings_gap),
+                "true_discretionary": float(data.true_discretionary),
+                "uncovered_savings": float(data.uncovered_savings),
+                "can_cover": data.can_cover,
+                "planned_savings": float(data.planned_savings),
+                "gross_income": float(data.plan.gross_income) if data.plan else 0,
+                "net_income": float(summary.total_income) if summary else 0,
+                "total_deductions": float(summary.total_deductions) if summary else 0,
+                "total_expenses": float(summary.total_expenses) if summary else 0,
+            },
+            "transactions": tx_list,
+            "expenses_by_category": {k: float(v) for k, v in data.expenses_by_category.items()},
+            "balance_change_pct": float(data.balance_change_pct) if data.balance_change_pct else None,
+            "balance_change_direction": data.balance_change_direction,
+        }
+
+    # Timeline data is shared (from the most recent period)
+    timeline_labels = [p.period_label for p in current_data.timeline]
+    timeline_savings = [float(p.cumulative_savings) for p in current_data.timeline]
+    timeline_balance = [float(p.cumulative_balance) for p in current_data.timeline]
+    timeline_available = [float(p.available_funds) for p in current_data.timeline]
+    timeline_target = [float(p.cumulative_savings_target) for p in current_data.timeline]
+    timeline_income = [float(p.income) for p in current_data.timeline]
+    timeline_expenses = [float(p.expenses) for p in current_data.timeline]
+    timeline_net = [float(p.net_flow) for p in current_data.timeline]
+    timeline_fixed = [float(p.fixed_expenses) for p in current_data.timeline]
+    timeline_flexible = [float(p.flexible_expenses) for p in current_data.timeline]
+
+    # Build period options for dropdown
+    period_options = "\n".join(
+        f'<option value="{p}">{p}</option>' for p in periods
+    )
+
+    html = f"""<!DOCTYPE html>
+<html lang="en" data-theme="{theme}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinTrack Dashboard - {current_data.workspace_name} (All Periods)</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        :root {{
+            --primary: #2563eb;
+            --success: #16a34a;
+            --warning: #ca8a04;
+            --danger: #dc2626;
+            --bg-primary: #ffffff;
+            --bg-secondary: #f9fafb;
+            --text-primary: #1f2937;
+            --text-secondary: #6b7280;
+            --border-color: #e5e7eb;
+            --card-bg: #ffffff;
+            --card-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }}
+        [data-theme="dark"] {{
+            --primary: #3b82f6;
+            --success: #22c55e;
+            --warning: #eab308;
+            --danger: #ef4444;
+            --bg-primary: #111827;
+            --bg-secondary: #1f2937;
+            --text-primary: #f9fafb;
+            --text-secondary: #9ca3af;
+            --border-color: #374151;
+            --card-bg: #1f2937;
+            --card-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }}
+        * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.5;
+            color: var(--text-primary);
+            background: var(--bg-secondary);
+        }}
+        .header {{
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }}
+        .header h1 {{ color: var(--primary); font-size: 1.5rem; }}
+        .header .meta {{ display: flex; gap: 1rem; align-items: center; color: var(--text-secondary); font-size: 0.875rem; }}
+        .period-dropdown {{
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--primary);
+            background: var(--bg-secondary);
+            cursor: pointer;
+        }}
+        .all-periods-badge {{
+            background: #dbeafe;
+            color: #1e40af;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }}
+        .content {{ padding: 2rem; max-width: 1400px; margin: 0 auto; }}
+        .cards {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }}
+        .card {{
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: var(--card-shadow);
+        }}
+        .card-label {{ font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.25rem; }}
+        .card-value {{ font-size: 1.75rem; font-weight: 600; }}
+        .card-value.positive {{ color: var(--success); }}
+        .card-value.negative {{ color: var(--danger); }}
+        .chart-container {{
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: var(--card-shadow);
+            margin-bottom: 2rem;
+        }}
+        .chart-title {{ font-size: 1rem; font-weight: 600; margin-bottom: 1rem; color: var(--text-primary); }}
+        .section-title {{ font-size: 1.25rem; font-weight: 600; margin: 2rem 0 1rem; color: var(--text-primary); }}
+        table {{
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--card-bg);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: var(--card-shadow);
+            margin-bottom: 2rem;
+        }}
+        th, td {{ padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border-color); }}
+        th {{ background: var(--bg-secondary); font-weight: 600; color: var(--text-primary); }}
+        td.number {{ text-align: right; font-variant-numeric: tabular-nums; }}
+        tr:last-child td {{ border-bottom: none; }}
+        .positive {{ color: var(--success); }}
+        .negative {{ color: var(--danger); }}
+        .flag {{ display: inline-block; padding: 0.125rem 0.5rem; border-radius: 4px; font-size: 0.75rem; margin-left: 0.25rem; }}
+        .flag.savings {{ background: #dbeafe; color: #1e40af; }}
+        .flag.deduction {{ background: #fef3c7; color: #92400e; }}
+        .flag.fixed {{ background: #f3e8ff; color: #6b21a8; }}
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>FinTrack Dashboard</h1>
+        <div class="meta">
+            <span class="all-periods-badge">All Periods</span>
+            <select id="period-select" class="period-dropdown" onchange="switchPeriod(this.value)">
+                {period_options}
+            </select>
+            <span>{current_data.workspace_name}</span>
+        </div>
+    </div>
+
+    <div class="content">
+        <div class="cards">
+            <div class="card">
+                <div class="card-label">Current Balance</div>
+                <div id="kpi-balance" class="card-value">{_format_currency(current_data.current_balance, currency)}</div>
+            </div>
+            <div class="card">
+                <div class="card-label">Total Savings</div>
+                <div id="kpi-savings" class="card-value positive">{_format_currency(current_data.total_savings, currency)}</div>
+            </div>
+            <div class="card">
+                <div class="card-label">Available Funds</div>
+                <div id="kpi-available" class="card-value">{_format_currency(current_data.available_funds, currency)}</div>
+            </div>
+            <div class="card">
+                <div class="card-label">Savings Gap</div>
+                <div id="kpi-gap" class="card-value">{_format_currency(current_data.savings_gap, currency)}</div>
+            </div>
+            <div class="card">
+                <div class="card-label">True Discretionary</div>
+                <div id="kpi-discretionary" class="card-value">{_format_currency(current_data.true_discretionary, currency)}</div>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <div class="chart-title">Balance & Savings Timeline (All Periods)</div>
+            <div id="chart-timeline"></div>
+        </div>
+
+        <div class="chart-container">
+            <div class="chart-title">{interval_label}ly Cash Flow</div>
+            <div id="chart-cashflow"></div>
+        </div>
+
+        <h2 class="section-title">Transactions (<span id="tx-period">{current_period}</span>)</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Category</th>
+                    <th>Description</th>
+                    <th class="number">Amount</th>
+                    <th>Flags</th>
+                </tr>
+            </thead>
+            <tbody id="transactions-body">
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        const currency = '{currency}';
+        const allPeriodsData = {json.dumps(all_periods_json, default=_decimal_to_float)};
+        let currentPeriod = '{current_period}';
+
+        const timelineLabels = {json.dumps(timeline_labels)};
+        const timelineSavings = {json.dumps(timeline_savings)};
+        const timelineBalance = {json.dumps(timeline_balance)};
+        const timelineAvailable = {json.dumps(timeline_available)};
+        const timelineTarget = {json.dumps(timeline_target)};
+        const timelineIncome = {json.dumps(timeline_income)};
+        const timelineExpenses = {json.dumps(timeline_expenses)};
+        const timelineNet = {json.dumps(timeline_net)};
+
+        function formatCurrency(amount) {{
+            const sign = amount < 0 ? '-' : '';
+            return sign + currency + ' ' + Math.abs(amount).toFixed(2);
+        }}
+
+        function updateKPIs(data) {{
+            const kpis = data.kpis;
+            document.getElementById('kpi-balance').textContent = formatCurrency(kpis.current_balance);
+            document.getElementById('kpi-savings').textContent = formatCurrency(kpis.total_savings);
+            document.getElementById('kpi-available').textContent = formatCurrency(kpis.available_funds);
+            document.getElementById('kpi-gap').textContent = formatCurrency(kpis.savings_gap);
+            document.getElementById('kpi-discretionary').textContent = formatCurrency(kpis.true_discretionary);
+
+            // Update classes
+            document.getElementById('kpi-available').className = 'card-value ' + (kpis.available_funds >= 0 ? 'positive' : 'negative');
+            document.getElementById('kpi-gap').className = 'card-value ' + (kpis.savings_gap > 0 ? 'negative' : 'positive');
+            document.getElementById('kpi-discretionary').className = 'card-value ' + (kpis.true_discretionary >= 0 ? 'positive' : 'negative');
+        }}
+
+        function renderTransactions(transactions) {{
+            const tbody = document.getElementById('transactions-body');
+            tbody.innerHTML = '';
+            transactions.forEach(tx => {{
+                const row = document.createElement('tr');
+                let flags = '';
+                if (tx.is_savings) flags += '<span class="flag savings">Savings</span>';
+                if (tx.is_deduction) flags += '<span class="flag deduction">Deduction</span>';
+                if (tx.is_fixed) flags += '<span class="flag fixed">Fixed</span>';
+
+                row.innerHTML = `
+                    <td>${{tx.date}}</td>
+                    <td>${{tx.category}}</td>
+                    <td>${{tx.description}}</td>
+                    <td class="number ${{tx.amount >= 0 ? 'positive' : 'negative'}}">${{formatCurrency(tx.amount)}}</td>
+                    <td>${{flags}}</td>
+                `;
+                tbody.appendChild(row);
+            }});
+        }}
+
+        function switchPeriod(period) {{
+            currentPeriod = period;
+            const data = allPeriodsData[period];
+            if (!data) return;
+
+            updateKPIs(data);
+            renderTransactions(data.transactions);
+            document.getElementById('tx-period').textContent = period;
+        }}
+
+        // Initialize charts
+        Plotly.newPlot('chart-timeline', [
+            {{ x: timelineLabels, y: timelineBalance, name: 'Balance', type: 'scatter', fill: 'tozeroy', line: {{ color: '#3b82f6' }} }},
+            {{ x: timelineLabels, y: timelineSavings, name: 'Savings', type: 'scatter', fill: 'tozeroy', line: {{ color: '#16a34a' }} }},
+            {{ x: timelineLabels, y: timelineAvailable, name: 'Available', type: 'scatter', line: {{ color: '#8b5cf6', dash: 'dash' }} }},
+        ], {{
+            margin: {{ t: 20, r: 20, b: 80, l: 60 }},
+            legend: {{ orientation: 'h', y: 1.1 }},
+            xaxis: {{ title: '{interval_label}', rangeslider: {{ visible: true, thickness: 0.1 }}, type: 'category' }},
+            yaxis: {{ title: 'Amount ({currency})' }},
+        }}, {{ responsive: true }});
+
+        Plotly.newPlot('chart-cashflow', [
+            {{ x: timelineLabels, y: timelineIncome, name: 'Income', type: 'bar', marker: {{ color: '#16a34a' }} }},
+            {{ x: timelineLabels, y: timelineExpenses.map(v => -v), name: 'Expenses', type: 'bar', marker: {{ color: '#dc2626' }} }},
+            {{ x: timelineLabels, y: timelineNet, name: 'Net Flow', type: 'scatter', line: {{ color: '#3b82f6' }} }},
+        ], {{
+            barmode: 'relative',
+            margin: {{ t: 20, r: 20, b: 80, l: 60 }},
+            legend: {{ orientation: 'h', y: 1.1 }},
+            xaxis: {{ title: '{interval_label}', rangeslider: {{ visible: true, thickness: 0.1 }}, type: 'category' }},
+            yaxis: {{ title: 'Amount ({currency})' }},
+        }}, {{ responsive: true }});
+
+        // Initial render
+        renderTransactions(allPeriodsData[currentPeriod].transactions);
+    </script>
+</body>
+</html>
+"""
+    return html

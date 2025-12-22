@@ -93,6 +93,7 @@ class DashboardDataProvider:
                 currency=currency,
                 interval=interval,
                 generated_at=datetime.now(),
+                theme=self.ws.config.theme,
                 current_period_label=period_label,
                 current_period_start=period_start,
                 current_period_end=period_end,
@@ -194,11 +195,18 @@ class DashboardDataProvider:
         current_summary.savings_surplus = savings_surplus
         current_summary.cash_on_hand = cash_on_hand
 
+        # Filter transactions for current period only (FIX for bug where all periods were shown)
+        period_transactions = [
+            tx for tx in all_transactions
+            if period_start <= tx.date < period_end
+        ]
+
         return DashboardData(
             workspace_name=self.ws.name,
             currency=currency,
             interval=interval,
             generated_at=datetime.now(),
+            theme=self.ws.config.theme,
             current_period_label=period_label,
             current_period_start=period_start,
             current_period_end=period_end,
@@ -226,8 +234,8 @@ class DashboardDataProvider:
             categories=categories,
             plan=plan,
             current_period_summary=current_summary,
-            # Transactions
-            transactions=all_transactions,
+            # Transactions (filtered for current period only)
+            transactions=period_transactions,
         )
 
     def _build_timeline(
@@ -477,3 +485,47 @@ class DashboardDataProvider:
             ))
 
         return flows
+
+    def get_all_periods_data(self) -> dict[str, DashboardData]:
+        """Get dashboard data for all periods with transactions.
+
+        Returns:
+            Dict mapping period label to DashboardData for that period.
+        """
+        interval = self.ws.config.interval
+        custom_days = self.ws.config.custom_interval_days
+
+        # Get all transactions
+        all_transactions = self.tx_repo.get_all()
+        if not all_transactions:
+            return {}
+
+        # Get first and last transaction dates
+        first_tx_date = min(tx.date for tx in all_transactions)
+        last_tx_date = max(tx.date for tx in all_transactions)
+
+        # Get period boundaries
+        first_period = get_period_start(first_tx_date, interval, custom_days)
+
+        # Get current period (or last transaction period)
+        current_period, current_end = get_current_period(interval, custom_days)
+        if last_tx_date > current_end:
+            # If there are future transactions, extend to include them
+            last_period = get_period_start(last_tx_date, interval, custom_days)
+        else:
+            last_period = current_period
+
+        # Generate data for each period
+        all_data: dict[str, DashboardData] = {}
+
+        for period_start, period_end in iterate_periods(
+            first_period,
+            get_period_end(last_period, interval, custom_days),
+            interval,
+            custom_days,
+        ):
+            period_label = format_period(period_start, interval)
+            data = self.get_dashboard_data(period_start)
+            all_data[period_label] = data
+
+        return all_data
