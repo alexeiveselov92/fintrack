@@ -1,12 +1,25 @@
 # FinTrack - Progress Report
 
 ## Current State
-**Phase**: Dark Theme Improvements (v0.3.3)
-**Status**: Released
+**Phase**: All-Periods Dashboard Refactoring (v0.3.3)
+**Status**: Complete
 **Last Updated**: 2025-12-23
 **Current Version**: 0.3.3
 
 ## What's New in v0.3.3
+
+### All-Periods Dashboard Refactoring
+- **Unified codebase** - All-periods mode now reuses single-period dashboard code
+- **Removed duplicate code** - Replaced 620-line duplicate function with simple wrapper
+- **Full 5-tab interface** - All-periods mode has same tabs as single-period:
+  - Overview, Income & Expenses, Savings, Budget, Transactions
+- **Dynamic period switching** - All tabs update when period is changed in dropdown
+- **Added HTML IDs for dynamic updates**:
+  - Overview: `kpi-balance`, `kpi-savings`, `kpi-available`, `kpi-gap`, `kpi-discretionary`
+  - Coverage: `coverage-container`
+  - Income & Expenses: `income-kpis`
+  - Savings: `savings-kpis`, `savings-coverage-container`, `savings-transactions-body/foot`
+  - Budget: `budget-content`
 
 ### Dark Theme (Grafana-style)
 - **Improved dark color palette** - deeper, more consistent dark tones inspired by Grafana
