@@ -165,22 +165,22 @@ def generate_dashboard_html(data: DashboardData) -> str:
             --success: #22c55e;
             --warning: #eab308;
             --danger: #ef4444;
-            --gray-50: #111827;
-            --gray-100: #1f2937;
-            --gray-200: #374151;
-            --gray-300: #4b5563;
+            --gray-50: #0d0f12;
+            --gray-100: #141619;
+            --gray-200: #1e2126;
+            --gray-300: #2c3039;
             --gray-500: #9ca3af;
             --gray-600: #d1d5db;
             --gray-700: #e5e7eb;
             --gray-800: #f3f4f6;
             --gray-900: #f9fafb;
-            --bg-primary: #111827;
-            --bg-secondary: #1f2937;
-            --text-primary: #f9fafb;
-            --text-secondary: #9ca3af;
-            --border-color: #374151;
-            --card-bg: #1f2937;
-            --card-shadow: 0 1px 3px rgba(0,0,0,0.3);
+            --bg-primary: #0d0f12;
+            --bg-secondary: #141619;
+            --text-primary: #d8d9da;
+            --text-secondary: #8b8d8f;
+            --border-color: #2c3039;
+            --card-bg: #1e2126;
+            --card-shadow: 0 1px 3px rgba(0,0,0,0.5);
         }}
         * {{ box-sizing: border-box; margin: 0; padding: 0; }}
         body {{
@@ -805,37 +805,72 @@ def generate_dashboard_html(data: DashboardData) -> str:
         const timelineFixed = {json.dumps(timeline_fixed)};
         const timelineFlexible = {json.dumps(timeline_flexible)};
 
+        // Theme-aware Plotly layout (Grafana-style dark theme)
+        const isDarkTheme = document.documentElement.getAttribute('data-theme') === 'dark';
+        const plotBg = isDarkTheme ? '#1e2126' : '#ffffff';
+        const paperBg = isDarkTheme ? '#1e2126' : '#ffffff';
+        const gridColor = isDarkTheme ? '#2c3039' : '#e5e7eb';
+        const textColor = isDarkTheme ? '#d8d9da' : '#1f2937';
+        const plotlyLayout = {{
+            paper_bgcolor: paperBg,
+            plot_bgcolor: plotBg,
+            font: {{ color: textColor }},
+            xaxis: {{
+                gridcolor: gridColor,
+                linecolor: gridColor,
+                tickcolor: textColor,
+                zerolinecolor: gridColor,
+            }},
+            yaxis: {{
+                gridcolor: gridColor,
+                linecolor: gridColor,
+                tickcolor: textColor,
+                zerolinecolor: gridColor,
+            }},
+            legend: {{
+                bgcolor: 'rgba(0,0,0,0)',
+                font: {{ color: textColor }},
+            }},
+        }};
+
+        // Hover template helper for currency formatting
+        const currencyHover = '%{{x}}<br>%{{fullData.name}}: ' + '{currency}' + ' %{{y:,.2f}}<extra></extra>';
+
         // Timeline chart (with range slider for date filtering)
         Plotly.newPlot('chart-timeline', [
-            {{ x: timelineLabels, y: timelineBalance, name: 'Balance', type: 'scatter', fill: 'tozeroy', line: {{ color: '#3b82f6' }} }},
-            {{ x: timelineLabels, y: timelineSavings, name: 'Savings', type: 'scatter', fill: 'tozeroy', line: {{ color: '#16a34a' }} }},
-            {{ x: timelineLabels, y: timelineAvailable, name: 'Available', type: 'scatter', line: {{ color: '#8b5cf6', dash: 'dash' }} }},
+            {{ x: timelineLabels, y: timelineBalance, name: 'Balance', type: 'scatter', fill: 'tozeroy', line: {{ color: '#3b82f6' }}, hovertemplate: currencyHover }},
+            {{ x: timelineLabels, y: timelineSavings, name: 'Savings', type: 'scatter', fill: 'tozeroy', line: {{ color: '#16a34a' }}, hovertemplate: currencyHover }},
+            {{ x: timelineLabels, y: timelineAvailable, name: 'Available', type: 'scatter', line: {{ color: '#8b5cf6', dash: 'dash' }}, hovertemplate: currencyHover }},
         ], {{
+            ...plotlyLayout,
             margin: {{ t: 20, r: 20, b: 80, l: 60 }},
-            legend: {{ orientation: 'h', y: 1.1 }},
+            legend: {{ orientation: 'h', y: 1.1, bgcolor: 'rgba(0,0,0,0)', font: {{ color: textColor }} }},
             xaxis: {{
-                title: '{interval_label}',
-                rangeslider: {{ visible: true, thickness: 0.1 }},
+                ...plotlyLayout.xaxis,
+                title: {{ text: '{interval_label}', font: {{ color: textColor }} }},
+                rangeslider: {{ visible: true, thickness: 0.1, bgcolor: plotBg }},
                 type: 'category'
             }},
-            yaxis: {{ title: 'Amount ({currency})' }},
+            yaxis: {{ ...plotlyLayout.yaxis, title: {{ text: 'Amount ({currency})', font: {{ color: textColor }} }} }},
         }}, {{ responsive: true }});
 
         // Cash flow chart (with range slider)
         Plotly.newPlot('chart-cashflow', [
-            {{ x: timelineLabels, y: timelineIncome, name: 'Income', type: 'bar', marker: {{ color: '#16a34a' }} }},
-            {{ x: timelineLabels, y: timelineExpenses.map(v => -v), name: 'Expenses', type: 'bar', marker: {{ color: '#dc2626' }} }},
-            {{ x: timelineLabels, y: timelineNet, name: 'Net Flow', type: 'scatter', line: {{ color: '#3b82f6' }} }},
+            {{ x: timelineLabels, y: timelineIncome, name: 'Income', type: 'bar', marker: {{ color: '#16a34a' }}, hovertemplate: currencyHover }},
+            {{ x: timelineLabels, y: timelineExpenses.map(v => -v), name: 'Expenses', type: 'bar', marker: {{ color: '#dc2626' }}, hovertemplate: currencyHover }},
+            {{ x: timelineLabels, y: timelineNet, name: 'Net Flow', type: 'scatter', line: {{ color: '#3b82f6' }}, hovertemplate: currencyHover }},
         ], {{
+            ...plotlyLayout,
             barmode: 'relative',
             margin: {{ t: 20, r: 20, b: 80, l: 60 }},
-            legend: {{ orientation: 'h', y: 1.1 }},
+            legend: {{ orientation: 'h', y: 1.1, bgcolor: 'rgba(0,0,0,0)', font: {{ color: textColor }} }},
             xaxis: {{
-                title: '{interval_label}',
-                rangeslider: {{ visible: true, thickness: 0.1 }},
+                ...plotlyLayout.xaxis,
+                title: {{ text: '{interval_label}', font: {{ color: textColor }} }},
+                rangeslider: {{ visible: true, thickness: 0.1, bgcolor: plotBg }},
                 type: 'category'
             }},
-            yaxis: {{ title: 'Amount ({currency})' }},
+            yaxis: {{ ...plotlyLayout.yaxis, title: {{ text: 'Amount ({currency})', font: {{ color: textColor }} }} }},
         }}, {{ responsive: true }});
 
         // Sankey
@@ -846,13 +881,16 @@ def generate_dashboard_html(data: DashboardData) -> str:
                 pad: 15,
                 thickness: 20,
                 label: {json.dumps(sankey_nodes)},
+                color: isDarkTheme ? '#3b82f6' : '#2563eb',
             }},
             link: {{
                 source: {json.dumps(sankey_source)},
                 target: {json.dumps(sankey_target)},
                 value: {json.dumps(sankey_value)},
+                color: isDarkTheme ? 'rgba(59,130,246,0.4)' : 'rgba(37,99,235,0.3)',
             }},
         }}], {{
+            ...plotlyLayout,
             margin: {{ t: 20, r: 20, b: 20, l: 20 }},
         }}, {{ responsive: true }});
 
@@ -863,39 +901,51 @@ def generate_dashboard_html(data: DashboardData) -> str:
             parents: {json.dumps([''] * len(expense_labels))},
             values: {json.dumps(expense_values)},
             textinfo: 'label+value+percent root',
+            textfont: {{ color: '#ffffff' }},
+            hovertemplate: '%{{label}}<br>{currency} %{{value:,.2f}}<br>%{{percentRoot:.1%}}<extra></extra>',
+            marker: {{
+                colors: isDarkTheme ?
+                    ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'] :
+                    ['#2563eb', '#16a34a', '#ca8a04', '#dc2626', '#7c3aed', '#db2777', '#0891b2', '#65a30d'],
+            }},
         }}], {{
+            ...plotlyLayout,
             margin: {{ t: 20, r: 20, b: 20, l: 20 }},
         }}, {{ responsive: true }});
 
         // Expenses timeline (with range slider)
         Plotly.newPlot('chart-expenses-timeline', [
-            {{ x: timelineLabels, y: timelineFixed, name: 'Fixed', type: 'bar', marker: {{ color: '#6b7280' }} }},
-            {{ x: timelineLabels, y: timelineFlexible, name: 'Flexible', type: 'bar', marker: {{ color: '#3b82f6' }} }},
+            {{ x: timelineLabels, y: timelineFixed, name: 'Fixed', type: 'bar', marker: {{ color: isDarkTheme ? '#6b7280' : '#4b5563' }}, hovertemplate: currencyHover }},
+            {{ x: timelineLabels, y: timelineFlexible, name: 'Flexible', type: 'bar', marker: {{ color: '#3b82f6' }}, hovertemplate: currencyHover }},
         ], {{
+            ...plotlyLayout,
             barmode: 'stack',
             margin: {{ t: 20, r: 20, b: 80, l: 60 }},
-            legend: {{ orientation: 'h', y: 1.1 }},
+            legend: {{ orientation: 'h', y: 1.1, bgcolor: 'rgba(0,0,0,0)', font: {{ color: textColor }} }},
             xaxis: {{
-                title: '{interval_label}',
-                rangeslider: {{ visible: true, thickness: 0.1 }},
+                ...plotlyLayout.xaxis,
+                title: {{ text: '{interval_label}', font: {{ color: textColor }} }},
+                rangeslider: {{ visible: true, thickness: 0.1, bgcolor: plotBg }},
                 type: 'category'
             }},
-            yaxis: {{ title: 'Expenses ({currency})' }},
+            yaxis: {{ ...plotlyLayout.yaxis, title: {{ text: 'Expenses ({currency})', font: {{ color: textColor }} }} }},
         }}, {{ responsive: true }});
 
         // Savings timeline (with range slider)
         Plotly.newPlot('chart-savings-timeline', [
-            {{ x: timelineLabels, y: timelineSavings, name: 'Actual Savings', type: 'scatter', fill: 'tozeroy', line: {{ color: '#16a34a' }} }},
-            {{ x: timelineLabels, y: timelineTarget, name: 'Target', type: 'scatter', line: {{ color: '#dc2626', dash: 'dash' }} }},
+            {{ x: timelineLabels, y: timelineSavings, name: 'Actual Savings', type: 'scatter', fill: 'tozeroy', line: {{ color: '#22c55e' }}, hovertemplate: currencyHover }},
+            {{ x: timelineLabels, y: timelineTarget, name: 'Target', type: 'scatter', line: {{ color: '#ef4444', dash: 'dash' }}, hovertemplate: currencyHover }},
         ], {{
+            ...plotlyLayout,
             margin: {{ t: 20, r: 20, b: 80, l: 60 }},
-            legend: {{ orientation: 'h', y: 1.1 }},
+            legend: {{ orientation: 'h', y: 1.1, bgcolor: 'rgba(0,0,0,0)', font: {{ color: textColor }} }},
             xaxis: {{
-                title: '{interval_label}',
-                rangeslider: {{ visible: true, thickness: 0.1 }},
+                ...plotlyLayout.xaxis,
+                title: {{ text: '{interval_label}', font: {{ color: textColor }} }},
+                rangeslider: {{ visible: true, thickness: 0.1, bgcolor: plotBg }},
                 type: 'category'
             }},
-            yaxis: {{ title: 'Cumulative Savings ({currency})' }},
+            yaxis: {{ ...plotlyLayout.yaxis, title: {{ text: 'Cumulative Savings ({currency})', font: {{ color: textColor }} }} }},
         }}, {{ responsive: true }});
 
         // Transactions
@@ -1236,6 +1286,9 @@ def save_dashboard(html: str, output_path: Path) -> None:
 def generate_all_periods_dashboard_html(all_data: dict[str, "DashboardData"]) -> str:
     """Generate dashboard HTML with all periods data and period switcher.
 
+    This generates a full 5-tab dashboard identical to the single-period version,
+    but with a period selector dropdown that updates all tabs dynamically.
+
     Args:
         all_data: Dict mapping period labels to DashboardData.
 
@@ -1254,7 +1307,7 @@ def generate_all_periods_dashboard_html(all_data: dict[str, "DashboardData"]) ->
     interval_label = _get_interval_label(current_data.interval)
     theme = current_data.theme
 
-    # Prepare data for all periods (for JSON embedding)
+    # Prepare comprehensive data for all periods (for JSON embedding)
     all_periods_json: dict = {}
     for period_label, data in all_data.items():
         # Prepare transactions for this period
@@ -1270,8 +1323,59 @@ def generate_all_periods_dashboard_html(all_data: dict[str, "DashboardData"]) ->
                 "is_fixed": tx.is_fixed,
             })
 
-        # Prepare KPIs
+        # Prepare savings transactions
+        savings_tx_list = []
+        savings_total = 0.0
+        for tx in sorted(data.transactions, key=lambda x: x.date, reverse=True):
+            if tx.is_savings:
+                savings_tx_list.append({
+                    "date": tx.date.isoformat(),
+                    "category": tx.category,
+                    "amount": float(tx.amount),
+                    "description": tx.description or "",
+                })
+                savings_total += float(tx.amount)
+
+        # Prepare budget data
         summary = data.current_period_summary
+        plan = data.plan
+        budget_data = {
+            "has_plan": plan is not None,
+            "gross_income_actual": float(summary.total_income) if summary else 0,
+            "gross_income_planned": float(plan.gross_income) if plan else 0,
+            "deductions_actual": float(summary.total_deductions) if summary else 0,
+            "deductions_planned": float(plan.total_deductions) if plan else 0,
+            "fixed_actual": float(summary.total_fixed_expenses) if summary else 0,
+            "fixed_planned": float(plan.total_fixed_expenses) if plan else 0,
+            "flexible_actual": float(summary.total_flexible_expenses) if summary else 0,
+            "flexible_planned": float(plan.disposable_income) if plan else 0,
+            "savings_actual": float(summary.total_savings) if summary else 0,
+            "savings_planned": float(plan.savings_target) if plan else 0,
+        }
+
+        # Prepare category breakdown
+        categories_list = []
+        total_actual = sum(c.actual_amount for c in data.categories if c.actual_amount > 0)
+        total_planned = sum(c.planned_amount for c in data.categories if c.planned_amount)
+        for cat in sorted(data.categories, key=lambda x: x.actual_amount, reverse=True):
+            if cat.actual_amount == 0 and not cat.planned_amount:
+                continue
+            actual_pct = float(cat.actual_amount / total_actual * 100) if total_actual > 0 else 0
+            planned_pct = float(cat.planned_amount / total_planned * 100) if cat.planned_amount and total_planned > 0 else 0
+            variance = float(cat.variance_vs_plan) if cat.variance_vs_plan else None
+            variance_pct = float(cat.variance_vs_plan / cat.planned_amount * 100) if cat.variance_vs_plan and cat.planned_amount else None
+            categories_list.append({
+                "category": cat.category,
+                "is_fixed": cat.is_fixed,
+                "actual": float(cat.actual_amount),
+                "actual_pct": actual_pct,
+                "planned": float(cat.planned_amount) if cat.planned_amount else None,
+                "planned_pct": planned_pct,
+                "variance": variance,
+                "variance_pct": variance_pct,
+            })
+
+        # Prepare KPIs and all data
         all_periods_json[period_label] = {
             "kpis": {
                 "current_balance": float(data.current_balance),
@@ -1282,12 +1386,16 @@ def generate_all_periods_dashboard_html(all_data: dict[str, "DashboardData"]) ->
                 "uncovered_savings": float(data.uncovered_savings),
                 "can_cover": data.can_cover,
                 "planned_savings": float(data.planned_savings),
-                "gross_income": float(data.plan.gross_income) if data.plan else 0,
+                "gross_income": float(plan.gross_income) if plan else 0,
                 "net_income": float(summary.total_income) if summary else 0,
                 "total_deductions": float(summary.total_deductions) if summary else 0,
                 "total_expenses": float(summary.total_expenses) if summary else 0,
             },
             "transactions": tx_list,
+            "savings_transactions": savings_tx_list,
+            "savings_total": savings_total,
+            "budget": budget_data,
+            "categories": categories_list,
             "expenses_by_category": {k: float(v) for k, v in data.expenses_by_category.items()},
             "balance_change_pct": float(data.balance_change_pct) if data.balance_change_pct else None,
             "balance_change_direction": data.balance_change_direction,
@@ -1310,6 +1418,34 @@ def generate_all_periods_dashboard_html(all_data: dict[str, "DashboardData"]) ->
         f'<option value="{p}">{p}</option>' for p in periods
     )
 
+    # Prepare Sankey data for current period (will be updated via JS)
+    sankey_nodes: list[str] = []
+    sankey_source: list[int] = []
+    sankey_target: list[int] = []
+    sankey_value: list[float] = []
+    node_map: dict[str, int] = {}
+
+    for flow in current_data.income_expense_flows:
+        if flow.source not in node_map:
+            node_map[flow.source] = len(sankey_nodes)
+            sankey_nodes.append(flow.source)
+        if flow.target not in node_map:
+            node_map[flow.target] = len(sankey_nodes)
+            sankey_nodes.append(flow.target)
+        sankey_source.append(node_map[flow.source])
+        sankey_target.append(node_map[flow.target])
+        sankey_value.append(float(flow.amount))
+
+    # Expense categories for treemap
+    expense_cats = sorted(
+        current_data.expenses_by_category.items(),
+        key=lambda x: x[1],
+        reverse=True,
+    )
+    expense_labels = [c[0] for c in expense_cats]
+    expense_values = [float(c[1]) for c in expense_cats]
+
+    # Generate HTML with full 5-tab interface
     html = f"""<!DOCTYPE html>
 <html lang="en" data-theme="{theme}">
 <head>
@@ -1320,6 +1456,7 @@ def generate_all_periods_dashboard_html(all_data: dict[str, "DashboardData"]) ->
     <style>
         :root {{
             --primary: #2563eb;
+            --primary-light: #3b82f6;
             --success: #16a34a;
             --warning: #ca8a04;
             --danger: #dc2626;
@@ -1333,87 +1470,50 @@ def generate_all_periods_dashboard_html(all_data: dict[str, "DashboardData"]) ->
         }}
         [data-theme="dark"] {{
             --primary: #3b82f6;
+            --primary-light: #60a5fa;
             --success: #22c55e;
             --warning: #eab308;
             --danger: #ef4444;
-            --bg-primary: #111827;
-            --bg-secondary: #1f2937;
-            --text-primary: #f9fafb;
-            --text-secondary: #9ca3af;
-            --border-color: #374151;
-            --card-bg: #1f2937;
-            --card-shadow: 0 1px 3px rgba(0,0,0,0.3);
+            --bg-primary: #0d0f12;
+            --bg-secondary: #141619;
+            --text-primary: #d8d9da;
+            --text-secondary: #8b8d8f;
+            --border-color: #2c3039;
+            --card-bg: #1e2126;
+            --card-shadow: 0 1px 3px rgba(0,0,0,0.5);
         }}
         * {{ box-sizing: border-box; margin: 0; padding: 0; }}
-        body {{
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            line-height: 1.5;
-            color: var(--text-primary);
-            background: var(--bg-secondary);
-        }}
-        .header {{
-            background: var(--card-bg);
-            border-bottom: 1px solid var(--border-color);
-            padding: 1rem 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }}
+        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.5; color: var(--text-primary); background: var(--bg-secondary); }}
+        .header {{ background: var(--card-bg); border-bottom: 1px solid var(--border-color); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }}
         .header h1 {{ color: var(--primary); font-size: 1.5rem; }}
         .header .meta {{ display: flex; gap: 1rem; align-items: center; color: var(--text-secondary); font-size: 0.875rem; }}
-        .period-dropdown {{
-            padding: 0.5rem 1rem;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            font-size: 1rem;
-            font-weight: 600;
-            color: var(--primary);
-            background: var(--bg-secondary);
-            cursor: pointer;
-        }}
-        .all-periods-badge {{
-            background: #dbeafe;
-            color: #1e40af;
-            padding: 0.25rem 0.5rem;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            font-weight: 500;
-        }}
+        .period-dropdown {{ padding: 0.5rem 1rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 1rem; font-weight: 600; color: var(--primary); background: var(--bg-secondary); cursor: pointer; }}
+        .all-periods-badge {{ background: #dbeafe; color: #1e40af; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 500; }}
+        [data-theme="dark"] .all-periods-badge {{ background: #1e3a5f; color: #93c5fd; }}
+        .tabs {{ background: var(--card-bg); border-bottom: 1px solid var(--border-color); display: flex; padding: 0 2rem; gap: 0; }}
+        .tab {{ padding: 1rem 1.5rem; cursor: pointer; border-bottom: 2px solid transparent; color: var(--text-secondary); font-weight: 500; transition: all 0.2s; }}
+        .tab:hover {{ color: var(--primary); }}
+        .tab.active {{ color: var(--primary); border-bottom-color: var(--primary); }}
         .content {{ padding: 2rem; max-width: 1400px; margin: 0 auto; }}
-        .cards {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }}
-        .card {{
-            background: var(--card-bg);
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: var(--card-shadow);
-        }}
+        .tab-content {{ display: none; }}
+        .tab-content.active {{ display: block; }}
+        .cards {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }}
+        .card {{ background: var(--card-bg); border-radius: 12px; padding: 1.5rem; box-shadow: var(--card-shadow); }}
         .card-label {{ font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.25rem; }}
         .card-value {{ font-size: 1.75rem; font-weight: 600; }}
         .card-value.positive {{ color: var(--success); }}
         .card-value.negative {{ color: var(--danger); }}
-        .chart-container {{
-            background: var(--card-bg);
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: var(--card-shadow);
-            margin-bottom: 2rem;
-        }}
+        .chart-container {{ background: var(--card-bg); border-radius: 12px; padding: 1.5rem; box-shadow: var(--card-shadow); margin-bottom: 2rem; }}
         .chart-title {{ font-size: 1rem; font-weight: 600; margin-bottom: 1rem; color: var(--text-primary); }}
         .section-title {{ font-size: 1.25rem; font-weight: 600; margin: 2rem 0 1rem; color: var(--text-primary); }}
-        table {{
-            width: 100%;
-            border-collapse: collapse;
-            background: var(--card-bg);
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: var(--card-shadow);
-            margin-bottom: 2rem;
-        }}
+        .section-block {{ background: var(--card-bg); border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem; box-shadow: var(--card-shadow); border-left: 4px solid var(--primary); }}
+        .section-block.historical {{ border-left-color: #6366f1; }}
+        .section-header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }}
+        .section-header h3 {{ margin: 0; font-size: 1rem; font-weight: 600; color: var(--text-primary); }}
+        .section-badge {{ display: inline-block; font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: 500; text-transform: uppercase; }}
+        .section-badge.historical {{ background: #e0e7ff; color: #3730a3; }}
+        [data-theme="dark"] .section-badge.historical {{ background: #312e81; color: #c7d2fe; }}
+        table {{ width: 100%; border-collapse: collapse; background: var(--card-bg); border-radius: 12px; overflow: hidden; box-shadow: var(--card-shadow); margin-bottom: 2rem; }}
         th, td {{ padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border-color); }}
         th {{ background: var(--bg-secondary); font-weight: 600; color: var(--text-primary); }}
         td.number {{ text-align: right; font-variant-numeric: tabular-nums; }}
@@ -1424,6 +1524,30 @@ def generate_all_periods_dashboard_html(all_data: dict[str, "DashboardData"]) ->
         .flag.savings {{ background: #dbeafe; color: #1e40af; }}
         .flag.deduction {{ background: #fef3c7; color: #92400e; }}
         .flag.fixed {{ background: #f3e8ff; color: #6b21a8; }}
+        .coverage-indicator {{ background: var(--card-bg); border-radius: 12px; padding: 1.5rem; box-shadow: var(--card-shadow); margin-bottom: 2rem; }}
+        .coverage-indicator.ok {{ border-left: 4px solid var(--success); }}
+        .coverage-indicator.warning {{ border-left: 4px solid var(--danger); }}
+        .coverage-title {{ font-weight: 600; margin-bottom: 0.5rem; }}
+        .coverage-status {{ display: flex; align-items: center; gap: 0.5rem; }}
+        .coverage-status .icon {{ font-size: 1.5rem; }}
+        .coverage-status.ok .icon {{ color: var(--success); }}
+        .coverage-status.warning .icon {{ color: var(--danger); }}
+        .budget-bar {{ display: flex; align-items: center; gap: 1rem; margin-bottom: 0.75rem; }}
+        .budget-bar .label {{ width: 150px; font-weight: 500; color: var(--text-primary); }}
+        .budget-bar .bar-container {{ flex: 1; height: 24px; background: var(--border-color); border-radius: 4px; overflow: hidden; }}
+        .budget-bar .bar {{ height: 100%; }}
+        .budget-bar .bar.ok {{ background: var(--success); }}
+        .budget-bar .bar.warning {{ background: var(--warning); }}
+        .budget-bar .bar.danger {{ background: var(--danger); }}
+        .budget-bar .bar.exceeded {{ background: #8b5cf6; }}
+        .budget-bar .value {{ width: 250px; text-align: right; font-size: 0.9rem; }}
+        .filters {{ display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }}
+        .filters select, .filters input {{ padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-secondary); color: var(--text-primary); }}
+        .export-btn {{ background: var(--primary); color: white; padding: 0.5rem 1rem; border: none; border-radius: 4px; cursor: pointer; }}
+        .filter-summary {{ padding: 0.75rem 1rem; background: var(--bg-secondary); border-radius: 8px; margin-bottom: 1rem; display: flex; gap: 2rem; align-items: center; }}
+        .filter-summary .stat {{ font-weight: 500; }}
+        .filter-summary .stat-value {{ font-weight: 600; color: var(--primary); }}
+        @media (max-width: 768px) {{ .tabs {{ overflow-x: auto; }} .tab {{ white-space: nowrap; }} .cards {{ grid-template-columns: 1fr; }} }}
     </style>
 </head>
 <body>
@@ -1438,61 +1562,95 @@ def generate_all_periods_dashboard_html(all_data: dict[str, "DashboardData"]) ->
         </div>
     </div>
 
+    <div class="tabs">
+        <div class="tab active" data-tab="overview">Overview</div>
+        <div class="tab" data-tab="income-expenses">Income & Expenses</div>
+        <div class="tab" data-tab="savings">Savings</div>
+        <div class="tab" data-tab="budget">Budget</div>
+        <div class="tab" data-tab="transactions">Transactions</div>
+    </div>
+
     <div class="content">
-        <div class="cards">
-            <div class="card">
-                <div class="card-label">Current Balance</div>
-                <div id="kpi-balance" class="card-value">{_format_currency(current_data.current_balance, currency)}</div>
+        <!-- OVERVIEW TAB -->
+        <div id="overview" class="tab-content active">
+            <div class="cards">
+                <div class="card"><div class="card-label">Current Balance</div><div id="kpi-balance" class="card-value"></div></div>
+                <div class="card"><div class="card-label">Total Savings</div><div id="kpi-savings" class="card-value positive"></div></div>
+                <div class="card"><div class="card-label">Available Funds</div><div id="kpi-available" class="card-value"></div></div>
+                <div class="card"><div class="card-label">Savings Gap</div><div id="kpi-gap" class="card-value"></div></div>
+                <div class="card"><div class="card-label">True Discretionary</div><div id="kpi-discretionary" class="card-value"></div></div>
             </div>
-            <div class="card">
-                <div class="card-label">Total Savings</div>
-                <div id="kpi-savings" class="card-value positive">{_format_currency(current_data.total_savings, currency)}</div>
+            <div id="coverage-container"></div>
+            <div class="section-block historical">
+                <div class="section-header"><h3>Balance & Savings Timeline</h3><span class="section-badge historical">Historical</span></div>
+                <div id="chart-timeline"></div>
             </div>
-            <div class="card">
-                <div class="card-label">Available Funds</div>
-                <div id="kpi-available" class="card-value">{_format_currency(current_data.available_funds, currency)}</div>
-            </div>
-            <div class="card">
-                <div class="card-label">Savings Gap</div>
-                <div id="kpi-gap" class="card-value">{_format_currency(current_data.savings_gap, currency)}</div>
-            </div>
-            <div class="card">
-                <div class="card-label">True Discretionary</div>
-                <div id="kpi-discretionary" class="card-value">{_format_currency(current_data.true_discretionary, currency)}</div>
+            <div class="section-block historical">
+                <div class="section-header"><h3>{interval_label}ly Cash Flow</h3><span class="section-badge historical">Historical</span></div>
+                <div id="chart-cashflow"></div>
             </div>
         </div>
 
-        <div class="chart-container">
-            <div class="chart-title">Balance & Savings Timeline (All Periods)</div>
-            <div id="chart-timeline"></div>
+        <!-- INCOME & EXPENSES TAB -->
+        <div id="income-expenses" class="tab-content">
+            <div class="cards" id="income-cards"></div>
+            <div class="chart-container">
+                <div class="chart-title">Income Flow (Sankey Diagram)</div>
+                <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem;">Shows money flow from Gross Income through deductions to Net Income, then to Fixed Expenses, Flexible Expenses, and Savings.</p>
+                <div id="chart-sankey"></div>
+            </div>
+            <div class="chart-container">
+                <div class="chart-title">Expenses by Category</div>
+                <div id="chart-treemap"></div>
+            </div>
+            <div class="section-block historical">
+                <div class="section-header"><h3>Expenses Timeline (Fixed vs Flexible)</h3><span class="section-badge historical">Historical</span></div>
+                <div id="chart-expenses-timeline"></div>
+            </div>
         </div>
 
-        <div class="chart-container">
-            <div class="chart-title">{interval_label}ly Cash Flow</div>
-            <div id="chart-cashflow"></div>
+        <!-- SAVINGS TAB -->
+        <div id="savings" class="tab-content">
+            <div class="cards" id="savings-cards"></div>
+            <div id="savings-coverage-container"></div>
+            <div class="section-block historical">
+                <div class="section-header"><h3>Savings vs Target Timeline</h3><span class="section-badge historical">Historical</span></div>
+                <div id="chart-savings-timeline"></div>
+            </div>
+            <h2 class="section-title">Savings Transactions</h2>
+            <table><thead><tr><th>Date</th><th>Category</th><th>Description</th><th class="number">Amount</th></tr></thead><tbody id="savings-transactions-body"></tbody><tfoot id="savings-transactions-foot"></tfoot></table>
         </div>
 
-        <h2 class="section-title">Transactions (<span id="tx-period">{current_period}</span>)</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>Category</th>
-                    <th>Description</th>
-                    <th class="number">Amount</th>
-                    <th>Flags</th>
-                </tr>
-            </thead>
-            <tbody id="transactions-body">
-            </tbody>
-        </table>
+        <!-- BUDGET TAB -->
+        <div id="budget" class="tab-content">
+            <div id="budget-content"></div>
+        </div>
+
+        <!-- TRANSACTIONS TAB -->
+        <div id="transactions" class="tab-content">
+            <div class="filters">
+                <select id="filter-category"><option value="">All Categories</option></select>
+                <select id="filter-type"><option value="">All Types</option><option value="income">Income</option><option value="expense">Expense</option><option value="savings">Savings</option><option value="deduction">Deduction</option></select>
+                <input type="text" id="filter-search" placeholder="Search description...">
+                <button class="export-btn" onclick="exportCSV()">Export CSV</button>
+            </div>
+            <div class="filter-summary">
+                <span class="stat">Showing: <span id="filtered-count" class="stat-value">0</span> transactions</span>
+                <span class="stat">Total: <span id="filtered-total" class="stat-value">{currency} 0.00</span></span>
+                <span class="stat">Income: <span id="filtered-income" class="stat-value positive">{currency} 0.00</span></span>
+                <span class="stat">Expenses: <span id="filtered-expenses" class="stat-value negative">{currency} 0.00</span></span>
+            </div>
+            <table id="transactions-table"><thead><tr><th>Date</th><th>Category</th><th>Description</th><th class="number">Amount</th><th>Flags</th></tr></thead><tbody id="transactions-body"></tbody></table>
+        </div>
     </div>
 
     <script>
         const currency = '{currency}';
         const allPeriodsData = {json.dumps(all_periods_json, default=_decimal_to_float)};
         let currentPeriod = '{current_period}';
+        let currentTransactions = [];
 
+        // Timeline data (shared across all periods)
         const timelineLabels = {json.dumps(timeline_labels)};
         const timelineSavings = {json.dumps(timeline_savings)};
         const timelineBalance = {json.dumps(timeline_balance)};
@@ -1501,83 +1659,246 @@ def generate_all_periods_dashboard_html(all_data: dict[str, "DashboardData"]) ->
         const timelineIncome = {json.dumps(timeline_income)};
         const timelineExpenses = {json.dumps(timeline_expenses)};
         const timelineNet = {json.dumps(timeline_net)};
+        const timelineFixed = {json.dumps(timeline_fixed)};
+        const timelineFlexible = {json.dumps(timeline_flexible)};
+
+        // Theme-aware Plotly layout
+        const isDarkTheme = document.documentElement.getAttribute('data-theme') === 'dark';
+        const plotBg = isDarkTheme ? '#1e2126' : '#ffffff';
+        const gridColor = isDarkTheme ? '#2c3039' : '#e5e7eb';
+        const textColor = isDarkTheme ? '#d8d9da' : '#1f2937';
+
+        // Tab switching
+        document.querySelectorAll('.tab').forEach(tab => {{
+            tab.addEventListener('click', () => {{
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(tab.dataset.tab).classList.add('active');
+            }});
+        }});
 
         function formatCurrency(amount) {{
             const sign = amount < 0 ? '-' : '';
             return sign + currency + ' ' + Math.abs(amount).toFixed(2);
         }}
 
-        function updateKPIs(data) {{
+        function updateOverviewTab(data) {{
             const kpis = data.kpis;
             document.getElementById('kpi-balance').textContent = formatCurrency(kpis.current_balance);
             document.getElementById('kpi-savings').textContent = formatCurrency(kpis.total_savings);
             document.getElementById('kpi-available').textContent = formatCurrency(kpis.available_funds);
             document.getElementById('kpi-gap').textContent = formatCurrency(kpis.savings_gap);
             document.getElementById('kpi-discretionary').textContent = formatCurrency(kpis.true_discretionary);
-
-            // Update classes
             document.getElementById('kpi-available').className = 'card-value ' + (kpis.available_funds >= 0 ? 'positive' : 'negative');
             document.getElementById('kpi-gap').className = 'card-value ' + (kpis.savings_gap > 0 ? 'negative' : 'positive');
             document.getElementById('kpi-discretionary').className = 'card-value ' + (kpis.true_discretionary >= 0 ? 'positive' : 'negative');
+
+            // Coverage indicator
+            const canCover = kpis.can_cover;
+            const icon = canCover ? '\\u2713' : '\\u26a0';
+            const coverText = kpis.uncovered_savings === 0 ? 'All savings targets are met!' :
+                (canCover ? 'You can cover the savings gap of ' + formatCurrency(kpis.uncovered_savings) :
+                'Cannot cover savings gap of ' + formatCurrency(kpis.uncovered_savings));
+            document.getElementById('coverage-container').innerHTML = `
+                <div class="coverage-indicator ${{canCover ? 'ok' : 'warning'}}">
+                    <div class="coverage-title">Coverage Indicator</div>
+                    <div class="coverage-status ${{canCover ? 'ok' : 'warning'}}">
+                        <span class="icon">${{icon}}</span><span>${{coverText}}</span>
+                    </div>
+                </div>`;
         }}
 
-        function renderTransactions(transactions) {{
+        function updateIncomeExpensesTab(data) {{
+            const kpis = data.kpis;
+            document.getElementById('income-cards').innerHTML = `
+                <div class="card"><div class="card-label">Gross Income</div><div class="card-value positive">${{formatCurrency(kpis.gross_income)}}</div></div>
+                <div class="card"><div class="card-label">Deductions</div><div class="card-value">${{formatCurrency(kpis.total_deductions)}}</div></div>
+                <div class="card"><div class="card-label">Net Income</div><div class="card-value positive">${{formatCurrency(kpis.net_income)}}</div></div>
+                <div class="card"><div class="card-label">Total Expenses</div><div class="card-value negative">${{formatCurrency(kpis.total_expenses)}}</div></div>`;
+        }}
+
+        function updateSavingsTab(data) {{
+            const kpis = data.kpis;
+            document.getElementById('savings-cards').innerHTML = `
+                <div class="card"><div class="card-label">Actual Savings</div><div class="card-value positive">${{formatCurrency(kpis.total_savings)}}</div></div>
+                <div class="card"><div class="card-label">Planned Savings</div><div class="card-value">${{formatCurrency(kpis.planned_savings)}}</div></div>
+                <div class="card"><div class="card-label">Savings Gap</div><div class="card-value ${{kpis.savings_gap > 0 ? 'negative' : 'positive'}}">${{formatCurrency(kpis.savings_gap)}}</div></div>`;
+
+            const canCover = kpis.can_cover;
+            const icon = canCover ? '\\u2713' : '\\u26a0';
+            document.getElementById('savings-coverage-container').innerHTML = `
+                <div class="coverage-indicator ${{canCover ? 'ok' : 'warning'}}">
+                    <div class="coverage-title">Coverage Status</div>
+                    <div class="coverage-status ${{canCover ? 'ok' : 'warning'}}">
+                        <span class="icon">${{icon}}</span>
+                        <div>
+                            <div><strong>Uncovered Savings:</strong> ${{formatCurrency(kpis.uncovered_savings)}}</div>
+                            <div><strong>Cash on Hand:</strong> ${{formatCurrency(kpis.available_funds)}}</div>
+                            <div><strong>Can Cover:</strong> ${{canCover ? 'Yes' : 'No'}}</div>
+                            <div><strong>True Discretionary:</strong> ${{formatCurrency(kpis.true_discretionary)}}</div>
+                        </div>
+                    </div>
+                </div>`;
+
+            // Savings transactions
+            const tbody = document.getElementById('savings-transactions-body');
+            tbody.innerHTML = '';
+            data.savings_transactions.slice(0, 20).forEach(tx => {{
+                const row = document.createElement('tr');
+                const cls = tx.amount >= 0 ? 'positive' : 'negative';
+                row.innerHTML = `<td>${{tx.date}}</td><td>${{tx.category}}</td><td>${{tx.description || '-'}}</td><td class="number ${{cls}}">${{formatCurrency(tx.amount)}}</td>`;
+                tbody.appendChild(row);
+            }});
+            document.getElementById('savings-transactions-foot').innerHTML = `<tr style="background:var(--bg-secondary);font-weight:600;"><td colspan="3">Total (This Period)</td><td class="number ${{data.savings_total >= 0 ? 'positive' : 'negative'}}">${{formatCurrency(data.savings_total)}}</td></tr>`;
+        }}
+
+        function updateBudgetTab(data) {{
+            const budget = data.budget;
+            if (!budget.has_plan) {{
+                document.getElementById('budget-content').innerHTML = '<p>No budget plan available for this period.</p>';
+                return;
+            }}
+            let html = '';
+
+            function renderBar(label, actual, planned, isTarget) {{
+                if (planned === 0) return '';
+                const pct = (actual / planned * 100);
+                const diff = actual - planned;
+                const diffPct = (diff / planned * 100);
+                let barClass, diffClass;
+                if (isTarget) {{
+                    barClass = pct >= 100 ? (pct > 100 ? 'exceeded' : 'ok') : (pct >= 80 ? 'warning' : 'danger');
+                    diffClass = pct >= 100 ? (pct > 100 ? 'exceeded' : 'positive') : 'negative';
+                }} else {{
+                    barClass = pct <= 100 ? 'ok' : 'danger';
+                    diffClass = pct <= 100 ? 'positive' : 'negative';
+                }}
+                const diffText = (diff >= 0 ? '+' : '') + formatCurrency(diff) + ', ' + (diff >= 0 ? '+' : '') + diffPct.toFixed(1) + '%';
+                return `<div class="budget-bar"><div class="label">${{label}}</div><div class="bar-container"><div class="bar ${{barClass}}" style="width:${{Math.min(pct, 100)}}%"></div></div><div class="value"><span style="font-weight:600">${{formatCurrency(actual)}}</span> / ${{formatCurrency(planned)}} <span class="${{diffClass}}" style="font-size:0.8rem">(${{diffText}})</span></div></div>`;
+            }}
+
+            if (budget.gross_income_planned > 0) html += '<h2 class="section-title">Income</h2>' + renderBar('Gross Income', budget.gross_income_actual, budget.gross_income_planned, true);
+            if (budget.deductions_planned > 0) html += '<h2 class="section-title">Deductions</h2>' + renderBar('Total Deductions', budget.deductions_actual, budget.deductions_planned, false);
+            if (budget.fixed_planned > 0) html += '<h2 class="section-title">Fixed Expenses</h2>' + renderBar('Total Fixed', budget.fixed_actual, budget.fixed_planned, false);
+            if (budget.flexible_planned > 0) html += '<h2 class="section-title">Flexible Spending</h2>' + renderBar('Disposable', budget.flexible_actual, budget.flexible_planned, false);
+            if (budget.savings_planned > 0) html += '<h2 class="section-title">Savings</h2>' + renderBar('Savings Target', budget.savings_actual, budget.savings_planned, true);
+
+            // Category breakdown
+            if (data.categories && data.categories.length > 0) {{
+                html += '<h2 class="section-title">Category Breakdown</h2><table><thead><tr><th>Category</th><th class="number">Actual</th><th class="number">%</th><th class="number">Planned</th><th class="number">%</th><th class="number">Variance</th><th class="number">Var %</th></tr></thead><tbody>';
+                data.categories.forEach(cat => {{
+                    const varClass = cat.variance !== null ? (cat.variance > 0 ? 'positive' : (cat.variance < 0 ? 'negative' : '')) : '';
+                    const varText = cat.variance !== null ? (cat.variance > 0 ? '+' : '') + formatCurrency(cat.variance) : '-';
+                    const varPctText = cat.variance_pct !== null ? (cat.variance_pct > 0 ? '+' : '') + cat.variance_pct.toFixed(1) + '%' : '-';
+                    html += `<tr><td>${{cat.category}}${{cat.is_fixed ? ' <span class="flag fixed">Fixed</span>' : ''}}</td><td class="number">${{formatCurrency(cat.actual)}}</td><td class="number">${{cat.actual_pct.toFixed(1)}}%</td><td class="number">${{cat.planned !== null ? formatCurrency(cat.planned) : '-'}}</td><td class="number">${{cat.planned !== null ? cat.planned_pct.toFixed(1) + '%' : '-'}}</td><td class="number ${{varClass}}">${{varText}}</td><td class="number ${{varClass}}">${{varPctText}}</td></tr>`;
+                }});
+                html += '</tbody></table>';
+            }}
+            document.getElementById('budget-content').innerHTML = html;
+        }}
+
+        function updateTransactionsTab(data) {{
+            currentTransactions = data.transactions;
+            // Update category filter
+            const categories = [...new Set(data.transactions.map(tx => tx.category))].sort();
+            const select = document.getElementById('filter-category');
+            select.innerHTML = '<option value="">All Categories</option>' + categories.map(c => `<option value="${{c}}">${{c}}</option>`).join('');
+            filterTransactions();
+        }}
+
+        function filterTransactions() {{
+            const category = document.getElementById('filter-category').value;
+            const type = document.getElementById('filter-type').value;
+            const search = document.getElementById('filter-search').value.toLowerCase();
+
+            let filtered = currentTransactions.filter(tx => {{
+                if (category && tx.category !== category) return false;
+                if (type === 'income' && tx.amount <= 0) return false;
+                if (type === 'expense' && (tx.amount >= 0 || tx.is_savings || tx.is_deduction)) return false;
+                if (type === 'savings' && !tx.is_savings) return false;
+                if (type === 'deduction' && !tx.is_deduction) return false;
+                if (search && !tx.description.toLowerCase().includes(search) && !tx.category.toLowerCase().includes(search)) return false;
+                return true;
+            }});
+
             const tbody = document.getElementById('transactions-body');
             tbody.innerHTML = '';
-            transactions.forEach(tx => {{
+            filtered.forEach(tx => {{
                 const row = document.createElement('tr');
                 let flags = '';
                 if (tx.is_savings) flags += '<span class="flag savings">Savings</span>';
                 if (tx.is_deduction) flags += '<span class="flag deduction">Deduction</span>';
                 if (tx.is_fixed) flags += '<span class="flag fixed">Fixed</span>';
-
-                row.innerHTML = `
-                    <td>${{tx.date}}</td>
-                    <td>${{tx.category}}</td>
-                    <td>${{tx.description}}</td>
-                    <td class="number ${{tx.amount >= 0 ? 'positive' : 'negative'}}">${{formatCurrency(tx.amount)}}</td>
-                    <td>${{flags}}</td>
-                `;
+                row.innerHTML = `<td>${{tx.date}}</td><td>${{tx.category}}</td><td>${{tx.description}}</td><td class="number ${{tx.amount >= 0 ? 'positive' : 'negative'}}">${{formatCurrency(tx.amount)}}</td><td>${{flags}}</td>`;
                 tbody.appendChild(row);
             }});
+
+            // Update summary
+            const total = filtered.reduce((sum, tx) => sum + tx.amount, 0);
+            const income = filtered.filter(tx => tx.amount > 0 && !tx.is_savings).reduce((sum, tx) => sum + tx.amount, 0);
+            const expenses = filtered.filter(tx => tx.amount < 0 && !tx.is_savings && !tx.is_deduction).reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+            document.getElementById('filtered-count').textContent = filtered.length;
+            document.getElementById('filtered-total').textContent = formatCurrency(total);
+            document.getElementById('filtered-total').className = 'stat-value ' + (total >= 0 ? 'positive' : 'negative');
+            document.getElementById('filtered-income').textContent = formatCurrency(income);
+            document.getElementById('filtered-expenses').textContent = formatCurrency(expenses);
+        }}
+
+        document.getElementById('filter-category').addEventListener('change', filterTransactions);
+        document.getElementById('filter-type').addEventListener('change', filterTransactions);
+        document.getElementById('filter-search').addEventListener('input', filterTransactions);
+
+        function exportCSV() {{
+            let csv = 'Date,Category,Description,Amount,Savings,Deduction,Fixed\\n';
+            currentTransactions.forEach(tx => {{ csv += `${{tx.date}},"${{tx.category}}","${{tx.description}}",${{tx.amount}},${{tx.is_savings}},${{tx.is_deduction}},${{tx.is_fixed}}\\n`; }});
+            const blob = new Blob([csv], {{ type: 'text/csv' }});
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'transactions.csv'; a.click();
         }}
 
         function switchPeriod(period) {{
             currentPeriod = period;
             const data = allPeriodsData[period];
             if (!data) return;
-
-            updateKPIs(data);
-            renderTransactions(data.transactions);
-            document.getElementById('tx-period').textContent = period;
+            updateOverviewTab(data);
+            updateIncomeExpensesTab(data);
+            updateSavingsTab(data);
+            updateBudgetTab(data);
+            updateTransactionsTab(data);
         }}
 
-        // Initialize charts
+        // Hover template helper for currency formatting
+        const currencyHover = '%{{x}}<br>%{{fullData.name}}: ' + currency + ' %{{y:,.2f}}<extra></extra>';
+
+        // Initialize all historical charts with formatted hover
         Plotly.newPlot('chart-timeline', [
-            {{ x: timelineLabels, y: timelineBalance, name: 'Balance', type: 'scatter', fill: 'tozeroy', line: {{ color: '#3b82f6' }} }},
-            {{ x: timelineLabels, y: timelineSavings, name: 'Savings', type: 'scatter', fill: 'tozeroy', line: {{ color: '#16a34a' }} }},
-            {{ x: timelineLabels, y: timelineAvailable, name: 'Available', type: 'scatter', line: {{ color: '#8b5cf6', dash: 'dash' }} }},
-        ], {{
-            margin: {{ t: 20, r: 20, b: 80, l: 60 }},
-            legend: {{ orientation: 'h', y: 1.1 }},
-            xaxis: {{ title: '{interval_label}', rangeslider: {{ visible: true, thickness: 0.1 }}, type: 'category' }},
-            yaxis: {{ title: 'Amount ({currency})' }},
-        }}, {{ responsive: true }});
+            {{ x: timelineLabels, y: timelineBalance, name: 'Balance', type: 'scatter', fill: 'tozeroy', line: {{ color: '#3b82f6' }}, hovertemplate: currencyHover }},
+            {{ x: timelineLabels, y: timelineSavings, name: 'Savings', type: 'scatter', fill: 'tozeroy', line: {{ color: '#22c55e' }}, hovertemplate: currencyHover }},
+            {{ x: timelineLabels, y: timelineAvailable, name: 'Available', type: 'scatter', line: {{ color: '#8b5cf6', dash: 'dash' }}, hovertemplate: currencyHover }},
+        ], {{ paper_bgcolor: plotBg, plot_bgcolor: plotBg, font: {{ color: textColor }}, margin: {{ t: 20, r: 20, b: 80, l: 60 }}, legend: {{ orientation: 'h', y: 1.1, bgcolor: 'rgba(0,0,0,0)', font: {{ color: textColor }} }}, xaxis: {{ title: {{ text: '{interval_label}', font: {{ color: textColor }} }}, rangeslider: {{ visible: true, thickness: 0.1, bgcolor: plotBg }}, type: 'category', gridcolor: gridColor, linecolor: gridColor }}, yaxis: {{ title: {{ text: 'Amount ({currency})', font: {{ color: textColor }} }}, gridcolor: gridColor, linecolor: gridColor }} }}, {{ responsive: true }});
 
         Plotly.newPlot('chart-cashflow', [
-            {{ x: timelineLabels, y: timelineIncome, name: 'Income', type: 'bar', marker: {{ color: '#16a34a' }} }},
-            {{ x: timelineLabels, y: timelineExpenses.map(v => -v), name: 'Expenses', type: 'bar', marker: {{ color: '#dc2626' }} }},
-            {{ x: timelineLabels, y: timelineNet, name: 'Net Flow', type: 'scatter', line: {{ color: '#3b82f6' }} }},
-        ], {{
-            barmode: 'relative',
-            margin: {{ t: 20, r: 20, b: 80, l: 60 }},
-            legend: {{ orientation: 'h', y: 1.1 }},
-            xaxis: {{ title: '{interval_label}', rangeslider: {{ visible: true, thickness: 0.1 }}, type: 'category' }},
-            yaxis: {{ title: 'Amount ({currency})' }},
-        }}, {{ responsive: true }});
+            {{ x: timelineLabels, y: timelineIncome, name: 'Income', type: 'bar', marker: {{ color: '#22c55e' }}, hovertemplate: currencyHover }},
+            {{ x: timelineLabels, y: timelineExpenses.map(v => -v), name: 'Expenses', type: 'bar', marker: {{ color: '#ef4444' }}, hovertemplate: currencyHover }},
+            {{ x: timelineLabels, y: timelineNet, name: 'Net Flow', type: 'scatter', line: {{ color: '#3b82f6' }}, hovertemplate: currencyHover }},
+        ], {{ paper_bgcolor: plotBg, plot_bgcolor: plotBg, font: {{ color: textColor }}, barmode: 'relative', margin: {{ t: 20, r: 20, b: 80, l: 60 }}, legend: {{ orientation: 'h', y: 1.1, bgcolor: 'rgba(0,0,0,0)', font: {{ color: textColor }} }}, xaxis: {{ title: {{ text: '{interval_label}', font: {{ color: textColor }} }}, rangeslider: {{ visible: true, thickness: 0.1, bgcolor: plotBg }}, type: 'category', gridcolor: gridColor, linecolor: gridColor }}, yaxis: {{ title: {{ text: 'Amount ({currency})', font: {{ color: textColor }} }}, gridcolor: gridColor, linecolor: gridColor }} }}, {{ responsive: true }});
 
-        // Initial render
-        renderTransactions(allPeriodsData[currentPeriod].transactions);
+        Plotly.newPlot('chart-sankey', [{{ type: 'sankey', orientation: 'h', node: {{ pad: 15, thickness: 20, label: {json.dumps(sankey_nodes)}, color: isDarkTheme ? '#3b82f6' : '#2563eb' }}, link: {{ source: {json.dumps(sankey_source)}, target: {json.dumps(sankey_target)}, value: {json.dumps(sankey_value)}, color: isDarkTheme ? 'rgba(59,130,246,0.4)' : 'rgba(37,99,235,0.3)' }}, valueformat: ',.2f', valuesuffix: '' }}], {{ paper_bgcolor: plotBg, plot_bgcolor: plotBg, font: {{ color: textColor }}, margin: {{ t: 20, r: 20, b: 20, l: 20 }} }}, {{ responsive: true }});
+
+        Plotly.newPlot('chart-treemap', [{{ type: 'treemap', labels: {json.dumps(expense_labels)}, parents: {json.dumps([''] * len(expense_labels))}, values: {json.dumps(expense_values)}, textinfo: 'label+value+percent root', textfont: {{ color: '#ffffff' }}, hovertemplate: '%{{label}}<br>' + currency + ' %{{value:,.2f}}<br>%{{percentRoot:.1%}}<extra></extra>', marker: {{ colors: isDarkTheme ? ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'] : ['#2563eb', '#16a34a', '#ca8a04', '#dc2626', '#7c3aed', '#db2777', '#0891b2', '#65a30d'] }} }}], {{ paper_bgcolor: plotBg, plot_bgcolor: plotBg, font: {{ color: textColor }}, margin: {{ t: 20, r: 20, b: 20, l: 20 }} }}, {{ responsive: true }});
+
+        Plotly.newPlot('chart-expenses-timeline', [
+            {{ x: timelineLabels, y: timelineFixed, name: 'Fixed', type: 'bar', marker: {{ color: isDarkTheme ? '#6b7280' : '#4b5563' }}, hovertemplate: currencyHover }},
+            {{ x: timelineLabels, y: timelineFlexible, name: 'Flexible', type: 'bar', marker: {{ color: '#3b82f6' }}, hovertemplate: currencyHover }},
+        ], {{ paper_bgcolor: plotBg, plot_bgcolor: plotBg, font: {{ color: textColor }}, barmode: 'stack', margin: {{ t: 20, r: 20, b: 80, l: 60 }}, legend: {{ orientation: 'h', y: 1.1, bgcolor: 'rgba(0,0,0,0)', font: {{ color: textColor }} }}, xaxis: {{ title: {{ text: '{interval_label}', font: {{ color: textColor }} }}, rangeslider: {{ visible: true, thickness: 0.1, bgcolor: plotBg }}, type: 'category', gridcolor: gridColor, linecolor: gridColor }}, yaxis: {{ title: {{ text: 'Expenses ({currency})', font: {{ color: textColor }} }}, gridcolor: gridColor, linecolor: gridColor }} }}, {{ responsive: true }});
+
+        Plotly.newPlot('chart-savings-timeline', [
+            {{ x: timelineLabels, y: timelineSavings, name: 'Actual Savings', type: 'scatter', fill: 'tozeroy', line: {{ color: '#22c55e' }}, hovertemplate: currencyHover }},
+            {{ x: timelineLabels, y: timelineTarget, name: 'Target', type: 'scatter', line: {{ color: '#ef4444', dash: 'dash' }}, hovertemplate: currencyHover }},
+        ], {{ paper_bgcolor: plotBg, plot_bgcolor: plotBg, font: {{ color: textColor }}, margin: {{ t: 20, r: 20, b: 80, l: 60 }}, legend: {{ orientation: 'h', y: 1.1, bgcolor: 'rgba(0,0,0,0)', font: {{ color: textColor }} }}, xaxis: {{ title: {{ text: '{interval_label}', font: {{ color: textColor }} }}, rangeslider: {{ visible: true, thickness: 0.1, bgcolor: plotBg }}, type: 'category', gridcolor: gridColor, linecolor: gridColor }}, yaxis: {{ title: {{ text: 'Cumulative Savings ({currency})', font: {{ color: textColor }} }}, gridcolor: gridColor, linecolor: gridColor }} }}, {{ responsive: true }});
+
+        // Initialize with current period data
+        switchPeriod(currentPeriod);
     </script>
 </body>
 </html>

@@ -1,10 +1,26 @@
 # FinTrack - Progress Report
 
 ## Current State
-**Phase**: Documentation Update (v0.3.2)
+**Phase**: Dark Theme Improvements (v0.3.3)
 **Status**: Released
-**Last Updated**: 2025-12-22
-**Current Version**: 0.3.2
+**Last Updated**: 2025-12-23
+**Current Version**: 0.3.3
+
+## What's New in v0.3.3
+
+### Dark Theme (Grafana-style)
+- **Improved dark color palette** - deeper, more consistent dark tones inspired by Grafana
+- **Plotly charts dark theme** - all charts now have proper dark backgrounds matching the theme
+- **Better contrast** - improved text and grid colors for readability
+- **Range slider styling** - sliders match the dark theme
+
+### Color Changes (Dark Theme)
+- Background: `#0d0f12` (primary), `#141619` (secondary)
+- Cards: `#1e2126`
+- Grid/Border: `#2c3039`
+- Text: `#d8d9da` (primary), `#8b8d8f` (secondary)
+
+---
 
 ## What's New in v0.3.2
 
