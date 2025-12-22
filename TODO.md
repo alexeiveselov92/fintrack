@@ -1,10 +1,33 @@
 # FinTrack - Task List
 
-## MVP Complete!
+## Current: Interactive Dashboard (v0.3.0)
 
-All core features are implemented and working.
+Replacing `fintrack report` with a comprehensive 5-tab interactive dashboard.
+
+### Phase 1: Data Layer
+- [ ] Add `uncovered_savings`, `true_discretionary` to calculator.py
+- [ ] Create `DashboardData`, `PeriodDataPoint` models
+- [ ] Create `fintrack/dashboard/` module
+- [ ] Implement `DashboardDataProvider` class
+- [ ] Create timeline data generator (all periods)
+
+### Phase 2: HTML Templates (Jinja2 + Plotly)
+- [ ] Base layout with 5 tabs (vanilla JS switching)
+- [ ] Overview tab (KPIs + Cash Reconciliation + Charts)
+- [ ] Income & Expenses tab (Sankey + Treemap + Timeline)
+- [ ] Savings tab (Coverage Indicator + Timeline)
+- [ ] Budget tab (Bullet bars + Table + Alerts)
+- [ ] Transactions tab (Filters + Table + Export)
+
+### Phase 3: Integration
+- [ ] Replace `fintrack report` with new dashboard
+- [ ] Remove old `reports/generator.py`
+- [ ] Add tests
+- [ ] Update version to 0.3.0
 
 ---
+
+## Previous Releases - COMPLETED
 
 ## Phase 1: Foundation - COMPLETED
 - [x] Project structure with pyproject.toml

@@ -1,13 +1,39 @@
 # FinTrack - Progress Report
 
 ## Current State
-**Phase**: MVP COMPLETE
-**Status**: Ready for use
-**Last Updated**: 2025-12-18
+**Phase**: Dashboard MVP (v0.3.0)
+**Status**: In Development
+**Last Updated**: 2025-12-22
+**Current Version**: 0.2.6
+
+## What's In Progress
+
+### Interactive Dashboard (v0.3.0)
+Replacing the simple HTML report with a comprehensive 5-tab interactive dashboard:
+- **Tab 1: Overview** - KPIs, Cash Reconciliation calculator, Balance/Savings Timeline
+- **Tab 2: Income & Expenses** - Sankey diagram, Treemap, Expenses Timeline
+- **Tab 3: Savings** - Coverage Indicator, Savings vs Planned Timeline
+- **Tab 4: Budget** - Budget vs Actual bars, Alerts
+- **Tab 5: Transactions** - Filterable table with export
+
+Key new metrics:
+- `uncovered_savings` = max(0, target - actual)
+- `can_cover` = cash_on_hand >= uncovered_savings
+- `true_discretionary` = cash_on_hand - uncovered_savings
+
+---
 
 ## What's Done
 
-### All MVP Features Implemented
+### v0.2.5-0.2.6: Savings Analysis Improvements
+- Added `cash_on_hand` = cumulative_balance - cumulative_savings
+- Added `cumulative_savings_target` across all periods
+- Added `savings_surplus` = cumulative_savings - target
+- Gross Income vs Plan comparison
+- Deductions vs Plan comparison
+- Fixed report command to use new metrics
+
+### All MVP Features Implemented (v0.1.0-v0.2.4)
 
 **Commands Available:**
 - `fintrack init <name>` - Create workspace

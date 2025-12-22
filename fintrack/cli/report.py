@@ -1,6 +1,11 @@
 """Implementation of 'fintrack report' command.
 
-Generates HTML reports.
+Generates interactive HTML dashboard with 5 tabs:
+1. Overview - KPIs, Cash Reconciliation, Timeline charts
+2. Income & Expenses - Sankey, Treemap, Expenses Timeline
+3. Savings - Coverage Indicator, Savings Timeline
+4. Budget - Budget vs Actual, Alerts
+5. Transactions - Filterable table with export
 """
 
 from pathlib import Path
@@ -8,16 +13,14 @@ from pathlib import Path
 import typer
 from rich.console import Console
 
-from fintrack.core.exceptions import NoPlanFoundError, WorkspaceNotFoundError
+from fintrack.core.exceptions import WorkspaceNotFoundError
 from fintrack.core.workspace import load_workspace
-from fintrack.engine.aggregator import analyze_period, get_historical_summaries
+from fintrack.dashboard import DashboardDataProvider, generate_dashboard_html, save_dashboard
 from fintrack.engine.periods import (
     format_period,
     get_current_period,
-    get_period_end,
     parse_period,
 )
-from fintrack.reports.generator import generate_report_html, save_report
 
 console = Console()
 
@@ -42,10 +45,14 @@ def report_command(
         help="Path to workspace (default: current directory)",
     ),
 ) -> None:
-    """Generate HTML report for a period.
+    """Generate interactive HTML dashboard for a period.
 
-    Creates a self-contained HTML file with budget overview,
-    category breakdown, and progress visualization.
+    Creates a self-contained HTML file with 5 tabs:
+    - Overview: KPIs, Cash Reconciliation, Balance/Savings Timeline
+    - Income & Expenses: Sankey diagram, Treemap, Expenses Timeline
+    - Savings: Coverage Indicator, Savings vs Target Timeline
+    - Budget: Budget vs Actual bars, Category breakdown
+    - Transactions: Filterable table with export
     """
     try:
         ws = load_workspace(workspace)
@@ -69,84 +76,17 @@ def report_command(
         )
 
     period_str = format_period(period_start, ws.config.interval)
-    period_end = get_period_end(
-        period_start, ws.config.interval, ws.config.custom_interval_days
-    )
 
-    # Get plan (currency always from workspace config)
-    currency = ws.config.base_currency
-    try:
-        plan = ws.get_plan_for_date(period_start)
-    except NoPlanFoundError:
-        plan = None
+    # Create data provider and get dashboard data
+    provider = DashboardDataProvider(ws)
+    data = provider.get_dashboard_data(period_start)
 
-    # Get transactions
-    tx_repo = ws.storage.get_transaction_repository()
-
-    # For cumulative savings, we need all transactions from the beginning
-    all_transactions = tx_repo.get_all()
-
-    # Get first transaction date for cumulative target calculation
-    from datetime import date
-    first_tx_date = min((tx.date for tx in all_transactions), default=None) if all_transactions else None
-
-    # Create a safe get_plan_for_date callback
-    def safe_get_plan(d: date) -> "BudgetPlan | None":
-        try:
-            return ws.get_plan_for_date(d)
-        except Exception:
-            return None
-
-    # Get historical data for averages
-    from fintrack.engine.periods import get_previous_periods
-    prev_periods = get_previous_periods(
-        period_start,
-        ws.config.analysis_window,
-        ws.config.interval,
-        ws.config.custom_interval_days,
-    )
-
-    earliest = prev_periods[-1] if prev_periods else period_start
-    # Filter transactions for historical analysis window
-    window_transactions = [tx for tx in all_transactions if earliest <= tx.date < period_end]
-
-    # Get historical summaries
-    historical = get_historical_summaries(
-        transactions=window_transactions,
-        period_start=period_start,
-        window=ws.config.analysis_window,
-        interval=ws.config.interval,
-        workspace_name=ws.name,
-        plan=plan,
-        custom_days=ws.config.custom_interval_days,
-    )
-
-    # Analyze (all_transactions passed for cumulative savings)
-    summary, analyses = analyze_period(
-        transactions=all_transactions,
-        period_start=period_start,
-        interval=ws.config.interval,
-        workspace_name=ws.name,
-        plan=plan,
-        historical_summaries=historical,
-        custom_days=ws.config.custom_interval_days,
-        get_plan_for_date=safe_get_plan,
-        first_transaction_date=first_tx_date,
-    )
-
-    if summary.transaction_count == 0:
+    if data.current_period_summary and data.current_period_summary.transaction_count == 0:
         console.print("[yellow]No transactions found for this period[/yellow]")
-        raise typer.Exit(0)
+        # Still generate the dashboard (it will show empty state)
 
     # Generate HTML
-    html = generate_report_html(
-        period_str=period_str,
-        workspace_name=ws.name,
-        plan=plan,
-        summary=summary,
-        analyses=analyses,
-        currency=currency,
-    )
+    html = generate_dashboard_html(data)
 
     # Determine output path
     if output:
@@ -154,8 +94,8 @@ def report_command(
     else:
         output_path = ws.reports_dir / f"{period_str}.html"
 
-    # Save report
-    save_report(html, output_path)
+    # Save dashboard
+    save_dashboard(html, output_path)
 
-    console.print(f"[green]Report generated:[/green] {output_path}")
+    console.print(f"[green]Dashboard generated:[/green] {output_path}")
     console.print(f"Open in browser: file://{output_path.absolute()}")

@@ -389,3 +389,102 @@ class BudgetProjection(BaseModel):
 
     total_allocated_flexible: Decimal
     unallocated_flexible: Decimal
+
+
+# -----------------------------------------------------------------------------
+# Dashboard Data Models (v0.3.0+)
+# -----------------------------------------------------------------------------
+
+
+class PeriodDataPoint(BaseModel):
+    """A single data point on the dashboard timeline.
+
+    Contains cumulative and period-specific values for one period.
+    Used for charts showing progression over time.
+    """
+
+    period_label: str  # "2024-12" or period-specific format
+    period_start: date
+    period_end: date
+
+    # Cumulative values (up to end of this period)
+    cumulative_savings: Decimal = Decimal(0)
+    cumulative_balance: Decimal = Decimal(0)
+    cumulative_savings_target: Decimal = Decimal(0)
+    available_funds: Decimal = Decimal(0)  # = cash_on_hand
+
+    # Period-specific flow
+    income: Decimal = Decimal(0)
+    expenses: Decimal = Decimal(0)
+    net_flow: Decimal = Decimal(0)  # income - expenses
+    savings_this_period: Decimal = Decimal(0)
+    deductions_this_period: Decimal = Decimal(0)
+
+    # Fixed vs flexible breakdown
+    fixed_expenses: Decimal = Decimal(0)
+    flexible_expenses: Decimal = Decimal(0)
+
+
+class IncomeExpenseFlow(BaseModel):
+    """Income/expense flow data for Sankey diagram.
+
+    Represents a flow from source to target with an amount.
+    """
+
+    source: str  # "Gross Income", "Net Income", category name
+    target: str  # "Net Income", "Savings", category name
+    amount: Decimal
+
+
+class DashboardData(BaseModel):
+    """Complete data container for dashboard generation.
+
+    Contains all metrics, timeline data, and transaction details
+    needed to render the 5-tab interactive dashboard.
+    """
+
+    # Metadata
+    workspace_name: str
+    currency: str
+    interval: IntervalType
+    generated_at: datetime
+
+    # Current period info
+    current_period_label: str
+    current_period_start: date
+    current_period_end: date
+
+    # ===== Overview KPIs =====
+    current_balance: Decimal = Decimal(0)  # cumulative_balance
+    total_savings: Decimal = Decimal(0)  # cumulative_savings
+    available_funds: Decimal = Decimal(0)  # cash_on_hand
+    planned_savings: Decimal = Decimal(0)  # cumulative_savings_target
+    savings_gap: Decimal = Decimal(0)  # = planned - actual (positive = behind)
+
+    # Coverage Indicator (new in v0.3.0)
+    uncovered_savings: Decimal = Decimal(0)  # max(0, target - actual)
+    can_cover: bool = True  # cash_on_hand >= uncovered_savings
+    true_discretionary: Decimal = Decimal(0)  # cash_on_hand - uncovered_savings
+
+    # Trend
+    balance_prev_period: Decimal | None = None
+    balance_change_pct: Decimal | None = None
+    balance_change_direction: str = "flat"  # "up" | "down" | "flat"
+
+    # ===== Timeline Data =====
+    timeline: list[PeriodDataPoint] = Field(default_factory=list)
+
+    # ===== Income & Expenses =====
+    income_expense_flows: list[IncomeExpenseFlow] = Field(default_factory=list)
+    expenses_by_category: dict[str, Decimal] = Field(default_factory=dict)
+    income_by_category: dict[str, Decimal] = Field(default_factory=dict)
+
+    # ===== Budget =====
+    categories: list[CategoryAnalysis] = Field(default_factory=list)
+    plan: BudgetPlan | None = None
+
+    # Period summary for current period
+    current_period_summary: PeriodSummary | None = None
+
+    # ===== Transactions =====
+    transactions: list[Transaction] = Field(default_factory=list)

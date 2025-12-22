@@ -351,3 +351,58 @@ def calculate_cumulative_savings_target(
         current_start = current_end
 
     return total_target
+
+
+def calculate_uncovered_savings(
+    cumulative_savings_target: Decimal,
+    cumulative_savings: Decimal,
+) -> Decimal:
+    """Calculate uncovered savings (shortfall vs target).
+
+    This represents how much savings the user still needs to accumulate
+    to meet their cumulative target. Returns 0 if target is met or exceeded.
+
+    Args:
+        cumulative_savings_target: Total required savings by now.
+        cumulative_savings: Total actual savings accumulated.
+
+    Returns:
+        Uncovered amount (>= 0). Zero means target is met.
+    """
+    return max(Decimal(0), cumulative_savings_target - cumulative_savings)
+
+
+def calculate_true_discretionary(
+    cash_on_hand: Decimal,
+    uncovered_savings: Decimal,
+) -> Decimal:
+    """Calculate true discretionary funds available.
+
+    This represents money that can truly be spent freely without
+    jeopardizing savings goals. If uncovered_savings is positive,
+    that amount should ideally be transferred to savings first.
+
+    Args:
+        cash_on_hand: Available cash not in savings.
+        uncovered_savings: Amount still needed to meet savings target.
+
+    Returns:
+        True discretionary amount (can be negative if cash insufficient).
+    """
+    return cash_on_hand - uncovered_savings
+
+
+def can_cover_savings_gap(
+    cash_on_hand: Decimal,
+    uncovered_savings: Decimal,
+) -> bool:
+    """Check if cash on hand can cover the savings gap.
+
+    Args:
+        cash_on_hand: Available cash not in savings.
+        uncovered_savings: Amount still needed to meet savings target.
+
+    Returns:
+        True if cash is sufficient to cover the gap.
+    """
+    return cash_on_hand >= uncovered_savings

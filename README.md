@@ -9,15 +9,37 @@
 ## Features
 
 - **Budget Planning**: Define income, deductions, fixed expenses, and savings goals
-- **Transaction Import**: Import transactions from CSV files with idempotent processing
-- **Expense Analysis**: Compare actual spending against budget with variance analysis
-- **Historical Comparison**: Track spending patterns with moving averages
-- **HTML Reports**: Generate beautiful reports with progress visualization
+- **Transaction Import**: Import transactions from CSV with idempotent processing
+- **Interactive Dashboard**: 5-tab HTML dashboard with Plotly charts
+- **Savings Coverage**: Track if available funds can cover savings gaps
+- **Expense Analysis**: Compare spending against budget with variance analysis
 - **Flexible Periods**: Support for day, week, month, quarter, year, or custom intervals
 
-## Key Concepts
+## Installation
 
-FinTrack separates your finances into clear categories:
+```bash
+pip install fintrack-cli
+```
+
+## Quick Start
+
+```bash
+# Create workspace
+fintrack init my_finances
+cd my_finances
+
+# Create budget plan in plans/2024-12.yaml
+# Import transactions from transactions/*.csv
+fintrack import
+
+# View status and generate dashboard
+fintrack status
+fintrack report
+```
+
+See [Quick Start Guide](docs/quick-start.md) for detailed steps.
+
+## Key Concepts
 
 ```
 Gross Income
@@ -28,512 +50,90 @@ Gross Income
 = Disposable Income (money you can actually spend)
 ```
 
-**Transaction Flags** - each transaction can have flags:
-- `is_deduction`: Pre-income deductions (taxes, social security) - subtracted from gross income
-- `is_fixed`: Fixed/recurring expenses (rent, subscriptions) - subtracted from net income
-- `is_savings`: Money transferred to savings - tracked separately
+**Transaction Flags:**
+- `is_deduction`: Pre-income deductions (taxes)
+- `is_fixed`: Fixed/recurring expenses (rent)
+- `is_savings`: Savings transfers
 
-## Installation
+## Commands
 
-```bash
-pip install fintrack-cli
+| Command | Description |
+|---------|-------------|
+| `fintrack init <name>` | Create new workspace |
+| `fintrack validate` | Validate configuration |
+| `fintrack import [path]` | Import CSV transactions |
+| `fintrack budget` | Show budget projection |
+| `fintrack status` | Quick spending overview |
+| `fintrack analyze` | Full analysis with history |
+| `fintrack report` | Generate HTML dashboard |
+| `fintrack list <type>` | List transactions/plans/categories |
+
+## Dashboard
+
+`fintrack report` generates an interactive HTML dashboard with 5 tabs:
+
+1. **Overview** - KPIs, Cash Reconciliation, Timeline charts
+2. **Income & Expenses** - Sankey diagram, Category Treemap
+3. **Savings** - Coverage Indicator, Savings vs Target
+4. **Budget** - Budget vs Actual progress bars
+5. **Transactions** - Filterable table with CSV export
+
+See [Dashboard Guide](docs/dashboard.md) for details.
+
+## Documentation
+
+- [Quick Start Guide](docs/quick-start.md)
+- [Budget Planning Guide](docs/budget-planning.md)
+- [Dashboard Guide](docs/dashboard.md)
+
+## CSV Format
+
+```csv
+date,amount,category,description,is_savings,is_deduction,is_fixed
+2024-12-01,5000.00,salary,Monthly salary,,,
+2024-12-01,-1000.00,tax,Income tax,,true,
+2024-12-01,-800.00,housing,Rent,,,true
+2024-12-10,-500.00,savings,Savings transfer,true,,
+2024-12-15,-45.00,food,Groceries,,,
 ```
 
-### Alternative: From GitHub (latest development version)
+**Notes:**
+- All amounts in workspace `base_currency`
+- Positive = income, Negative = expense
+- Boolean flags: `true`/`false` or `1`/`0`
 
-```bash
-pip install git+https://github.com/alexeiveselov92/fintrack.git
-```
-
-### Alternative: Local Development
-
-```bash
-git clone https://github.com/alexeiveselov92/fintrack.git
-cd fintrack
-pip install -e .
-```
-
-### Verify Installation
-
-```bash
-fintrack --help
-```
-
-## Quick Start
-
-### Step 1: Create a Workspace
-
-```bash
-fintrack init my_finances
-cd my_finances
-```
-
-This creates:
-```
-my_finances/
-├── workspace.yaml        # Workspace configuration
-├── plans/                # Budget plan files (empty)
-├── transactions/         # CSV transaction files (empty)
-├── reports/              # Generated HTML reports (empty)
-└── .cache/               # SQLite database (created on import)
-```
-
-### Step 2: Create Your Budget Plan
-
-Create a file `plans/2024-12.yaml`:
+## Budget Plan Example
 
 ```yaml
-# Unique identifier for this budget plan
 id: "december_2024"
-
-# When this plan becomes active
 valid_from: "2024-12-01"
 
-# All amounts are in workspace base_currency (set in workspace.yaml)
 gross_income: 5000.00
 
-# Pre-tax deductions (subtracted from gross to get net income)
 deductions:
   - name: "income_tax"
     amount: 1000.00
-  - name: "social_security"
-    amount: 200.00
 
-# Fixed monthly expenses (rent, subscriptions, etc.)
 fixed_expenses:
   - name: "rent"
     amount: 800.00
     category: "housing"
-  - name: "utilities"
-    amount: 150.00
-    category: "utilities"
 
-# Savings: specify rate OR fixed amount
-savings_rate: 0.20  # 20% of savings_base
-savings_base: "net_income"  # or "disposable_income"
-# savings_amount: 500.00  # Or fixed amount (takes priority over rate)
+savings_rate: 0.20
+savings_base: "net_income"
 
-# Budget limits per category (for flexible spending)
 category_budgets:
   - category: "food"
     amount: 400.00
-  - category: "transport"
-    amount: 150.00
-  - category: "entertainment"
-    amount: 100.00
-  - category: "health"
-    amount: 50.00
 ```
-
-### Step 3: Validate Your Configuration
-
-```bash
-fintrack validate
-```
-
-Expected output:
-```
-Validation Results
-==================
-
-Workspace: OK
-  Path: /path/to/my_finances
-
-Budget Plans:
-  plans/2024-12.yaml: OK
-    ID: december_2024
-    Valid from: 2024-12-01
-    Gross: 5000.00 EUR
-    Net: 3800.00 EUR
-    Disposable: 2040.00 EUR
-```
-
-### Step 4: Import Your Transactions
-
-Create a CSV file `transactions/december.csv`:
-
-```csv
-date,amount,category,description,is_savings,is_deduction,is_fixed
-2024-12-01,5000.00,salary,December salary,false,false,false
-2024-12-01,-1000.00,tax,Income tax,false,true,false
-2024-12-01,-200.00,social,Social security,false,true,false
-2024-12-01,-800.00,housing,Monthly rent,false,false,true
-2024-12-02,-150.00,utilities,Electricity + water,false,false,true
-2024-12-03,-45.50,food,Weekly groceries,false,false,false
-2024-12-05,-12.00,transport,Bus ticket,false,false,false
-2024-12-07,-85.00,food,Restaurant dinner,false,false,false
-2024-12-10,-500.00,savings,Monthly savings transfer,true,false,false
-2024-12-15,-30.00,entertainment,Netflix + Spotify,false,false,true
-2024-12-18,-50.00,food,Groceries,false,false,false
-2024-12-20,-25.00,health,Pharmacy,false,false,false
-```
-
-**Note**: All amounts are in workspace `base_currency` (set in `workspace.yaml`).
-
-Import the transactions:
-
-```bash
-fintrack import
-```
-
-Output:
-```
-Import Results
-==============
-
-File: transactions/december.csv
-  Transactions: 12
-  New: 12
-  Duplicates: 0
-
-Total imported: 12
-```
-
-**Note**: Import is idempotent - running it again won't create duplicates.
-
-### Step 5: View Your Budget
-
-```bash
-fintrack budget
-```
-
-Shows your budget plan projection:
-```
-Budget Plan: december_2024
-==========================
-Period: December 2024
-
-Income Flow
------------
-Gross Income:        5,000.00 EUR
-- Deductions:       -1,200.00 EUR
-  = Net Income:      3,800.00 EUR
-- Fixed Expenses:     -950.00 EUR
-- Savings Target:     -760.00 EUR
-  = Disposable:      2,090.00 EUR
-
-Category Budgets
-----------------
-housing:        800.00 EUR (fixed)
-utilities:      200.00 EUR (fixed)
-food:           400.00 EUR
-transport:      150.00 EUR
-entertainment:  100.00 EUR
-health:          50.00 EUR
-```
-
-### Step 6: Check Current Status
-
-```bash
-fintrack status
-```
-
-Shows actual spending vs budget:
-```
-Status: December 2024
-=====================
-
-Budget Progress
----------------
-Disposable Budget:  2,090.00 EUR
-Variable Spent:       247.50 EUR
-Remaining:          1,842.50 EUR (88.2%)
-
-Category Status
----------------
-food:           180.50 / 400.00 EUR (45.1%) - On track
-transport:       12.00 / 150.00 EUR (8.0%)  - On track
-entertainment:   30.00 / 100.00 EUR (30.0%) - On track
-health:          25.00 /  50.00 EUR (50.0%) - On track
-
-Savings Progress
-----------------
-Target:   760.00 EUR
-Actual:   500.00 EUR (65.8%)
-```
-
-### Step 7: Full Analysis
-
-```bash
-fintrack analyze
-```
-
-Shows detailed analysis with historical comparison.
-
-### Step 8: Generate HTML Report
-
-```bash
-fintrack report
-```
-
-Creates a visual HTML report in `reports/` directory.
-
-## CSV Format Reference
-
-**Note**: All amounts are in workspace `base_currency` (set in `workspace.yaml`).
-
-### Required Columns
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `date` | YYYY-MM-DD | Transaction date |
-| `amount` | Decimal | Amount in base_currency (positive = income, negative = expense) |
-| `category` | String | Category name |
-
-### Optional Columns
-
-| Column | Type | Default | Description |
-|--------|------|---------|-------------|
-| `description` | String | empty | Transaction description |
-| `original_amount` | Decimal | - | Original amount (if different currency) |
-| `original_currency` | String | - | Original currency code (if different from base) |
-| `is_savings` | Boolean | false | Mark as savings transfer |
-| `is_deduction` | Boolean | false | Mark as pre-tax deduction |
-| `is_fixed` | Boolean | false | Mark as fixed expense |
-
-### Boolean Values
-
-These values are treated as `true`: `true`, `True`, `TRUE`, `1`, `yes`, `Yes`, `YES`
-
-Everything else (including empty) is treated as `false`.
-
-### Example: Different Transaction Types
-
-```csv
-date,amount,category,description,is_savings,is_deduction,is_fixed
-# Income (positive amount)
-2024-12-01,5000.00,salary,Monthly salary,,,
-
-# Tax deduction (negative, is_deduction=true)
-2024-12-01,-1000.00,tax,Income tax,,true,
-
-# Fixed expense (negative, is_fixed=true)
-2024-12-01,-800.00,housing,Rent,,,true
-
-# Savings (negative, is_savings=true)
-2024-12-15,-500.00,savings,Emergency fund,true,,
-
-# Variable expense (negative, no flags)
-2024-12-10,-45.00,food,Groceries,,,
-```
-
-### Example: Transaction with Original Currency
-
-If you have a transaction in a different currency, record both the converted amount and the original:
-
-```csv
-date,amount,category,description,original_amount,original_currency
-2024-12-10,-46.00,food,Restaurant abroad,-50.00,USD
-```
-
-This shows the transaction was $50 USD, converted to €46 EUR (workspace base_currency).
-
-## Commands Reference
-
-### `fintrack init <name>`
-
-Create a new workspace.
-
-```bash
-fintrack init my_finances
-```
-
-### `fintrack validate`
-
-Validate workspace configuration and budget plans.
-
-```bash
-fintrack validate
-```
-
-### `fintrack import [path]`
-
-Import transactions from CSV file(s).
-
-```bash
-# Import from default transactions/ directory
-fintrack import
-
-# Import single file
-fintrack import transactions/december.csv
-
-# Import from custom directory
-fintrack import custom/path/
-
-# Force re-import (ignore duplicates check)
-fintrack import --force
-```
-
-### `fintrack budget`
-
-Show budget projection from plan.
-
-```bash
-# Current month
-fintrack budget
-
-# Specific period
-fintrack budget --period 2024-12
-fintrack budget --period 2024-Q4
-fintrack budget --period 2024
-```
-
-### `fintrack status`
-
-Show current spending status vs budget.
-
-```bash
-fintrack status
-fintrack status --period 2024-12
-```
-
-### `fintrack analyze`
-
-Full analysis with historical comparison.
-
-```bash
-fintrack analyze
-fintrack analyze --period 2024-12
-fintrack analyze --history 6  # Compare with last 6 periods
-```
-
-### `fintrack report`
-
-Generate HTML report.
-
-```bash
-fintrack report
-fintrack report --output my_report.html
-fintrack report --period 2024-12
-```
-
-### `fintrack list`
-
-List various items.
-
-```bash
-fintrack list transactions
-fintrack list transactions --period 2024-12
-fintrack list transactions --category food
-fintrack list plans
-fintrack list categories
-fintrack list imports
-```
-
-### `fintrack cache clear`
-
-Clear all transactions and import history.
-
-```bash
-fintrack cache clear           # Show what would be deleted
-fintrack cache clear --confirm # Actually delete everything
-```
-
-### `fintrack cache reset <filename>`
-
-Reset a specific file to allow re-import.
-
-```bash
-fintrack cache reset december.csv  # Delete transactions from this file
-fintrack import                     # Re-import it
-```
-
-## Period Formats
-
-| Format | Example | Description |
-|--------|---------|-------------|
-| Month | `2024-12` | December 2024 |
-| Quarter | `2024-Q4` | Q4 2024 (Oct-Dec) |
-| Year | `2024` | Full year 2024 |
-| Day | `2024-12-15` | Specific day |
-| Week | `2024-W50` | Week 50 of 2024 |
-| Range | `2024-12-01:2024-12-31` | Custom date range |
-
-## Currency Handling
-
-FinTrack works with a single `base_currency` set in `workspace.yaml`. All amounts (`amount` in transactions, values in budget plans) are in this currency.
-
-For transactions originally in other currencies:
-1. Convert the amount to `base_currency` yourself
-2. Optionally record the original values in `original_amount` and `original_currency` columns
-
-**Workspace configuration** (`workspace.yaml`):
-
-```yaml
-base_currency: "EUR"  # All calculations use this currency
-```
-
-**Transaction example** (converted from USD to EUR):
-
-```csv
-date,amount,category,description,original_amount,original_currency
-2024-12-10,-46.00,food,Restaurant abroad,-50.00,USD
-```
-
-## Workspace Structure
-
-```
-my_finances/
-├── workspace.yaml        # Workspace configuration
-├── plans/                # Budget plan files
-│   ├── 2024-11.yaml
-│   └── 2024-12.yaml
-├── rates.yaml            # Exchange rates (optional)
-├── transactions/         # CSV transaction files
-│   ├── november.csv
-│   └── december.csv
-├── reports/              # Generated HTML reports
-│   └── report_2024-12.html
-└── .cache/               # SQLite database
-    └── fintrack.db
-```
-
-## Tips
-
-1. **Start simple**: Begin with basic categories, add more as needed
-2. **One plan per month**: Create monthly budget plans to track changes
-3. **Consistent categories**: Use same category names in plans and transactions
-4. **Regular imports**: Import transactions weekly to stay on track
-5. **Review reports**: Generate HTML reports for visual analysis
-
-## Troubleshooting
-
-### "No budget plan found for period"
-
-Create a budget plan with `valid_from` date before your transaction dates.
-
-### "Validation failed"
-
-Run `fintrack validate` to see detailed error messages for your config files.
-
-### "Import shows 0 new transactions"
-
-The file was already imported. Use `--force` to re-import.
-
-### CSV encoding issues
-
-Ensure your CSV file is UTF-8 encoded.
 
 ## Development
 
 ```bash
-# Clone repository
 git clone https://github.com/alexeiveselov92/fintrack.git
 cd fintrack
-
-# Create virtual environment
-python -m venv .venv
-source .venv/bin/activate  # or .venv\Scripts\activate on Windows
-
-# Install in development mode
 pip install -e ".[dev]"
-
-# Run tests
 pytest
-
-# Run linting
-ruff check fintrack
-mypy fintrack
 ```
 
 ## License
