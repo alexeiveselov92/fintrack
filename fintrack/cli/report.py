@@ -86,6 +86,17 @@ def report_command(
     # For cumulative savings, we need all transactions from the beginning
     all_transactions = tx_repo.get_all()
 
+    # Get first transaction date for cumulative target calculation
+    from datetime import date
+    first_tx_date = min((tx.date for tx in all_transactions), default=None) if all_transactions else None
+
+    # Create a safe get_plan_for_date callback
+    def safe_get_plan(d: date) -> "BudgetPlan | None":
+        try:
+            return ws.get_plan_for_date(d)
+        except Exception:
+            return None
+
     # Get historical data for averages
     from fintrack.engine.periods import get_previous_periods
     prev_periods = get_previous_periods(
@@ -119,6 +130,8 @@ def report_command(
         plan=plan,
         historical_summaries=historical,
         custom_days=ws.config.custom_interval_days,
+        get_plan_for_date=safe_get_plan,
+        first_transaction_date=first_tx_date,
     )
 
     if summary.transaction_count == 0:
