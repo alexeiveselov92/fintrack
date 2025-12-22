@@ -1,10 +1,19 @@
 # FinTrack - Progress Report
 
 ## Current State
-**Phase**: Dashboard Improvements (v0.3.1)
+**Phase**: Documentation Update (v0.3.2)
 **Status**: Released
 **Last Updated**: 2025-12-22
-**Current Version**: 0.3.1
+**Current Version**: 0.3.2
+
+## What's New in v0.3.2
+
+### Documentation
+- **Updated README.md** with v0.3.1+ features (dark theme, all-periods mode)
+- **Updated Dashboard Guide** with theme config, range sliders, section badges, all-periods mode
+- **Updated Quick Start** with theme configuration and `--all` flag
+
+---
 
 ## What's New in v0.3.1
 

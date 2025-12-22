@@ -10,7 +10,9 @@
 
 - **Budget Planning**: Define income, deductions, fixed expenses, and savings goals
 - **Transaction Import**: Import transactions from CSV with idempotent processing
-- **Interactive Dashboard**: 5-tab HTML dashboard with Plotly charts
+- **Interactive Dashboard**: 5-tab HTML dashboard with Plotly charts and range sliders
+- **Dark/Light Theme**: Toggle dashboard theme in workspace configuration
+- **All-Periods View**: Single dashboard with period switcher dropdown
 - **Savings Coverage**: Track if available funds can cover savings gaps
 - **Expense Analysis**: Compare spending against budget with variance analysis
 - **Flexible Periods**: Support for day, week, month, quarter, year, or custom intervals
@@ -75,8 +77,36 @@ Gross Income
 1. **Overview** - KPIs, Cash Reconciliation, Timeline charts
 2. **Income & Expenses** - Sankey diagram, Category Treemap
 3. **Savings** - Coverage Indicator, Savings vs Target
-4. **Budget** - Budget vs Actual progress bars
-5. **Transactions** - Filterable table with CSV export
+4. **Budget** - Budget vs Actual progress bars with variance display
+5. **Transactions** - Filterable table with totals and CSV export
+
+### Dashboard Options
+
+```bash
+# Generate dashboard for current period
+fintrack report
+
+# Generate dashboard for specific period
+fintrack report --period 2024-11
+
+# Generate all-periods dashboard with period switcher
+fintrack report --all
+```
+
+The `--all` flag creates a single HTML file with a dropdown to switch between all periods.
+
+### Dark Theme
+
+Add `theme: "dark"` to your `workspace.yaml`:
+
+```yaml
+name: my_finances
+base_currency: EUR
+interval: month
+theme: dark  # Options: light (default), dark
+```
+
+Then regenerate the dashboard: `fintrack report`
 
 See [Dashboard Guide](docs/dashboard.md) for details.
 

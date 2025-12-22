@@ -5,13 +5,37 @@ FinTrack generates an interactive HTML dashboard with 5 tabs, providing comprehe
 ## Generating the Dashboard
 
 ```bash
+# Generate for current period
 fintrack report
+
+# Generate for specific period
+fintrack report --period 2024-12
+
+# Generate all-periods dashboard with period switcher
+fintrack report --all
 ```
 
 Options:
 - `--period/-p`: Specify period (e.g., `2024-12`)
+- `--all/-a`: Generate single HTML with all periods (dropdown to switch)
 - `--output/-o`: Custom output path
 - `--workspace/-w`: Workspace path
+
+## Theme Configuration
+
+FinTrack supports light and dark themes. Configure in `workspace.yaml`:
+
+```yaml
+name: my_finances
+base_currency: EUR
+interval: month
+theme: dark  # Options: light (default), dark
+```
+
+Regenerate the dashboard after changing the theme:
+```bash
+fintrack report
+```
 
 ## Dashboard Tabs
 
@@ -86,16 +110,27 @@ Visual progress for:
 - Flexible Spending vs Disposable Income
 - Savings vs Target
 
+Each bar shows:
+- Actual amount / Planned amount
+- Variance (absolute and percentage)
+- Example: `€4,500 / €5,000 (-€500, -10%)`
+
 Color coding:
 - Green: On track
 - Yellow: Warning (approaching limit)
 - Red: Over budget
+- Purple: Exceeded (>100%) - with "Exceeded" badge
 
 **Category Breakdown Table:**
-- Category name
-- Actual amount
-- Planned amount
-- Variance (positive = under budget)
+| Column | Description |
+|--------|-------------|
+| Category | Category name |
+| Actual | Amount spent |
+| Actual % | Share of total spending |
+| Planned | Budgeted amount |
+| Planned % | Share of budget |
+| Variance | Difference (positive = under budget) |
+| Variance % | Percentage difference |
 
 ### 5. Transactions
 
@@ -103,6 +138,13 @@ Color coding:
 - Category dropdown
 - Type (Income/Expense/Savings/Deduction)
 - Text search (description/category)
+
+**Filter Summary:**
+Shows real-time stats for filtered results:
+- Transaction count
+- Total amount
+- Income total
+- Expense total
 
 **Transactions Table:**
 - Date
@@ -148,9 +190,36 @@ All charts are interactive:
 - Pan by dragging
 - Double-click to reset zoom
 
+**Range Sliders:**
+Historical charts (Balance Timeline, Savings Timeline, etc.) include interactive range sliders at the bottom. Drag the handles to zoom into specific date ranges.
+
+**Section Badges:**
+Charts are labeled with badges to indicate their scope:
+- **Historical** (blue): Shows data across all periods
+- **Current Period** (green): Shows current period data only
+
+## All-Periods Mode
+
+Generate a single dashboard with all periods using:
+
+```bash
+fintrack report --all
+```
+
+This creates an HTML file with:
+- **Period Selector**: Dropdown in the header to switch between periods
+- **Shared Timeline**: Historical charts show full timeline across all periods
+- **Period-Specific Data**: KPIs, transactions, and budget update when switching periods
+
+Useful for:
+- Reviewing financial history without generating multiple reports
+- Comparing performance across periods
+- Quick access to any period's details
+
 ## Tips
 
 1. **Regular Review**: Generate dashboard weekly to stay on track
 2. **Cash Reconciliation**: Match accounts monthly
 3. **Watch Coverage**: Green indicator = financial health
 4. **Track Trends**: Use timeline charts to spot patterns
+5. **Use All-Periods Mode**: For quick access to historical data

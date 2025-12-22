@@ -25,6 +25,14 @@ my_finances/
 └── .cache/               # Database
 ```
 
+**Optional:** Edit `workspace.yaml` to enable dark theme:
+```yaml
+name: my_finances
+base_currency: EUR
+interval: month
+theme: dark  # Optional: light (default) or dark
+```
+
 ## Step 2: Create a Budget Plan
 
 Create `plans/2024-12.yaml`:
@@ -92,7 +100,11 @@ fintrack status
 ## Step 6: Generate Dashboard
 
 ```bash
+# Current period dashboard
 fintrack report
+
+# All periods in one dashboard (with period switcher)
+fintrack report --all
 ```
 
 Open the HTML file in your browser to see the interactive dashboard.
