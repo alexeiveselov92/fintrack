@@ -1,12 +1,12 @@
 # FinTrack - Progress Report
 
 ## Current State
-**Phase**: All-Periods Dashboard Refactoring (v0.3.3)
-**Status**: Complete
+**Phase**: All-Periods Dashboard Refactoring (v0.3.4)
+**Status**: Released
 **Last Updated**: 2025-12-23
-**Current Version**: 0.3.3
+**Current Version**: 0.3.4
 
-## What's New in v0.3.3
+## What's New in v0.3.4
 
 ### All-Periods Dashboard Refactoring
 - **Unified codebase** - All-periods mode now reuses single-period dashboard code
