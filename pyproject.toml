@@ -1,6 +1,6 @@
 [project]
 name = "fintrack-cli"
-version = "0.3.21"
+version = "0.3.22"
 description = "Personal Finance Tracker CLI - budget planning and expense analysis"
 readme = "README.md"
 requires-python = ">=3.11"

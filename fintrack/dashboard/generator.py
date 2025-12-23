@@ -683,9 +683,9 @@ def generate_dashboard_html(
             height: 100%;
             border-radius: 4px;
         }}
-        .mini-progress-fill.ok {{ background: var(--success-color); }}
-        .mini-progress-fill.warning {{ background: var(--warning-color); }}
-        .mini-progress-fill.danger {{ background: var(--danger-color); }}
+        .mini-progress-fill.ok {{ background: #22c55e; }}
+        .mini-progress-fill.warning {{ background: #f59e0b; }}
+        .mini-progress-fill.danger {{ background: #ef4444; }}
         .mini-progress-pct {{
             font-size: 0.8rem;
             min-width: 45px;
