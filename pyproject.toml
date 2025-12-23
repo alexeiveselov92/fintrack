@@ -59,6 +59,13 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["fintrack"]
 
+[tool.hatch.build.targets.sdist]
+exclude = [
+    ".claude/",
+    ".git/",
+    ".venv/",
+]
+
 [tool.hatch.metadata]
 # Disable license-file to avoid twine validation issues
 license-files = []

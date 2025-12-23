@@ -91,3 +91,6 @@ test_finances/
 # Temp files
 *.tmp
 *.temp
+
+# Claude Code settings (may contain sensitive data)
+.claude/

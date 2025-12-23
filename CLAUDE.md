@@ -68,3 +68,22 @@ source .venv/bin/activate
 fintrack --help
 pytest tests/
 ```
+
+## CRITICAL: Security Rules
+
+### NEVER store secrets in repository!
+This is a PUBLIC repository. PyPI automatically scans and revokes tokens found in public repos.
+
+**PyPI Publishing:**
+- User will provide token at runtime
+- NEVER save token to any file in repo
+- NEVER add token-containing commands to settings.local.json
+- Use environment variables: `TWINE_USERNAME=__token__ TWINE_PASSWORD=<token>`
+- Token format: `pypi-...` (starts with pypi-)
+
+**Files excluded from package:**
+- `.claude/` - may contain sensitive settings
+- `.git/` - version control
+- `.venv/` - virtual environment
+
+See `pyproject.toml` → `[tool.hatch.build.targets.sdist]` for exclusions.
