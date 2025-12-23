@@ -27,8 +27,10 @@ def _format_currency(amount: Decimal, currency: str) -> str:
     return f"{symbol}{amount:,.2f}"
 
 
-def _get_coverage_icon(can_cover: bool) -> str:
+def _get_coverage_icon(uncovered: Decimal, can_cover: bool) -> str:
     """Get coverage indicator icon."""
+    if uncovered == 0:
+        return "\u2713"  # All targets met
     return "\u2713" if can_cover else "\u26a0"
 
 
@@ -344,6 +346,11 @@ def generate_dashboard_html(
             border-radius: 12px;
             padding: 1.5rem;
             box-shadow: var(--card-shadow);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }}
+        .card:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
         }}
         .card-label {{ font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.25rem; }}
         .card-value {{ font-size: 1.75rem; font-weight: 600; }}
@@ -359,6 +366,11 @@ def generate_dashboard_html(
             padding: 1.5rem;
             box-shadow: var(--card-shadow);
             margin-bottom: 2rem;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }}
+        .coverage-indicator:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
         }}
         .coverage-indicator.ok {{ border-left: 4px solid var(--success); }}
         .coverage-indicator.warning {{ border-left: 4px solid var(--danger); }}
@@ -375,6 +387,11 @@ def generate_dashboard_html(
             box-shadow: var(--card-shadow);
             margin-bottom: 2rem;
             width: 100%;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }}
+        .chart-container:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
         }}
         .chart-container > div {{
             width: 100% !important;
@@ -410,39 +427,140 @@ def generate_dashboard_html(
         th {{ background: var(--bg-secondary); font-weight: 600; color: var(--text-primary); }}
         td.number {{ text-align: right; font-variant-numeric: tabular-nums; }}
         tr:last-child td {{ border-bottom: none; }}
+        tbody tr {{ transition: background 0.15s ease; }}
+        tbody tr:hover {{ background: var(--bg-secondary); }}
         .positive {{ color: var(--success); }}
         .negative {{ color: var(--danger); }}
 
         .budget-bar {{
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            margin-bottom: 0.75rem;
+            margin-bottom: 0.5rem;
         }}
-        .budget-bar .label {{ width: 150px; font-weight: 500; color: var(--text-primary); }}
         .budget-bar .bar-container {{
-            flex: 1;
-            height: 24px;
+            height: 10px;
             background: var(--border-color);
-            border-radius: 4px;
+            border-radius: 5px;
             overflow: hidden;
-            position: relative;
+            margin-bottom: 0.5rem;
         }}
         .budget-bar .bar {{
             height: 100%;
-            transition: width 0.3s;
+            animation: fillBar 0.4s ease-out;
+        }}
+        @keyframes fillBar {{
+            from {{ width: 0; }}
         }}
         .budget-bar .bar.ok {{ background: var(--success); }}
         .budget-bar .bar.warning {{ background: var(--warning); }}
         .budget-bar .bar.danger {{ background: var(--danger); }}
         .budget-bar .bar.exceeded {{ background: #8b5cf6; }}
-        .budget-bar .value {{ min-width: 240px; text-align: right; font-variant-numeric: tabular-nums; font-size: 1rem; }}
-        .budget-bar .value .actual {{ font-weight: 600; }}
-        .budget-bar .value .planned {{ color: var(--text-secondary); }}
-        .budget-bar .value .diff {{ font-size: 0.9rem; margin-left: 0.25rem; display: inline-block; }}
-        .budget-bar .value .diff.positive {{ color: var(--success); }}
-        .budget-bar .value .diff.negative {{ color: var(--danger); }}
-        .budget-bar .value .diff.exceeded {{ color: #8b5cf6; }}
+        .budget-bar .value {{ font-variant-numeric: tabular-nums; }}
+        .budget-bar .value .actual {{ font-weight: 700; font-size: 1.5rem; display: block; }}
+        .budget-bar .value .planned {{ color: var(--text-secondary); font-size: 0.85rem; opacity: 0.8; }}
+        /* Status badge replaces diff */
+        .status-badge {{
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            margin-top: 0.5rem;
+        }}
+        .status-badge.ok {{ background: rgba(34,197,94,0.15); color: var(--success); }}
+        .status-badge.warning {{ background: rgba(234,179,8,0.15); color: var(--warning); }}
+        .status-badge.danger {{ background: rgba(239,68,68,0.15); color: var(--danger); }}
+        .status-badge.exceeded-good {{ background: rgba(139,92,246,0.15); color: #a78bfa; }}
+        .budget-cumulative {{
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 0.5rem 0.75rem;
+            margin-top: 0.75rem;
+            font-size: 0.85rem;
+        }}
+        .budget-cumulative .cumulative-label {{ color: var(--text-secondary); }}
+        .budget-cumulative .cumulative-value {{ font-weight: 600; }}
+        .budget-section {{
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 1rem 1.25rem;
+            box-shadow: var(--card-shadow);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }}
+        .budget-section:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        }}
+        .budget-section h3 {{
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin: 0 0 0.5rem 0;
+            font-weight: 500;
+        }}
+        .budget-sections-grid {{
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }}
+        .budget-breakdown {{
+            margin-top: 0.75rem;
+            border-top: 1px solid var(--border-color);
+        }}
+        .budget-breakdown summary {{
+            padding: 0.5rem 0;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            list-style: none;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }}
+        .budget-breakdown summary::-webkit-details-marker {{ display: none; }}
+        .budget-breakdown summary::after {{
+            content: '\u25BC';
+            font-size: 0.6rem;
+            transition: transform 0.2s ease;
+        }}
+        .budget-breakdown[open] summary::after {{
+            transform: rotate(180deg);
+        }}
+        .budget-breakdown-items {{
+            padding-bottom: 0.5rem;
+        }}
+        .budget-breakdown-item {{
+            display: flex;
+            justify-content: space-between;
+            padding: 0.3rem 0;
+            font-size: 0.85rem;
+        }}
+        .budget-breakdown-item .cat-name {{ color: var(--text-primary); }}
+        .budget-breakdown-item .cat-amount {{ font-variant-numeric: tabular-nums; color: var(--text-secondary); }}
+        .budget-subsections {{
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid var(--border-color);
+        }}
+        .budget-subsection {{
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            margin-bottom: 0.5rem;
+        }}
+        .budget-subsection:last-child {{
+            margin-bottom: 0;
+        }}
+        .budget-subsection h4 {{
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin: 0 0 0.4rem 0;
+            font-weight: 500;
+        }}
         .budget-badge {{
             display: inline-block;
             padding: 0.125rem 0.5rem;
@@ -461,6 +579,11 @@ def generate_dashboard_html(
             padding: 1.5rem;
             box-shadow: var(--card-shadow);
             margin-bottom: 2rem;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }}
+        .cash-reconciliation:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
         }}
         .cash-input-row {{
             display: flex;
@@ -586,6 +709,11 @@ def generate_dashboard_html(
             display: flex;
             gap: 2rem;
             align-items: center;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }}
+        .filter-summary:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }}
         .filter-summary .stat {{ font-weight: 500; }}
         .filter-summary .stat-value {{ font-weight: 600; color: var(--primary); }}
@@ -598,6 +726,11 @@ def generate_dashboard_html(
             box-shadow: var(--card-shadow);
             border-left: 4px solid var(--primary);
             width: 100%;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }}
+        .section-block:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
         }}
         .section-block > div:not(.section-header) {{
             width: 100% !important;
@@ -703,9 +836,9 @@ def generate_dashboard_html(
 
     <div class="tabs">
         <div class="tab active" data-tab="overview">Overview</div>
+        <div class="tab" data-tab="budget">Budget</div>
         <div class="tab" data-tab="income-expenses">Income & Expenses</div>
         <div class="tab" data-tab="savings">Savings</div>
-        <div class="tab" data-tab="budget">Budget</div>
         <div class="tab" data-tab="transactions">Transactions</div>
     </div>
 
@@ -737,10 +870,10 @@ def generate_dashboard_html(
             </div>
 
             <div id="coverage-container">
-                <div class="coverage-indicator {'ok' if data.can_cover else 'warning'}">
+                <div class="coverage-indicator {'ok' if data.uncovered_savings == 0 or data.can_cover else 'warning'}">
                     <div class="coverage-title">Coverage Indicator</div>
-                    <div class="coverage-status {'ok' if data.can_cover else 'warning'}">
-                        <span class="icon">{_get_coverage_icon(data.can_cover)}</span>
+                    <div class="coverage-status {'ok' if data.uncovered_savings == 0 or data.can_cover else 'warning'}">
+                        <span class="icon">{_get_coverage_icon(data.uncovered_savings, data.can_cover)}</span>
                         <span>{_get_coverage_text(data, currency)}</span>
                     </div>
                 </div>
@@ -779,6 +912,13 @@ def generate_dashboard_html(
                     <span class="section-badge historical">Historical</span>
                 </div>
                 <div id="chart-cashflow"></div>
+            </div>
+        </div>
+
+        <!-- ===== BUDGET TAB ===== -->
+        <div id="budget" class="tab-content">
+            <div id="budget-content">
+                {_render_budget_section(data, currency)}
             </div>
         </div>
 
@@ -865,10 +1005,10 @@ def generate_dashboard_html(
             </div>
 
             <div id="savings-coverage-container">
-                <div class="coverage-indicator {'ok' if data.can_cover else 'warning'}">
+                <div class="coverage-indicator {'ok' if data.uncovered_savings == 0 or data.can_cover else 'warning'}">
                     <div class="coverage-title">Coverage Status</div>
-                    <div class="coverage-status {'ok' if data.can_cover else 'warning'}">
-                        <span class="icon">{_get_coverage_icon(data.can_cover)}</span>
+                    <div class="coverage-status {'ok' if data.uncovered_savings == 0 or data.can_cover else 'warning'}">
+                        <span class="icon">{_get_coverage_icon(data.uncovered_savings, data.can_cover)}</span>
                         <div>
                             <div><strong>Uncovered Savings:</strong> {_format_currency(data.uncovered_savings, currency)}</div>
                             <div><strong>Cash on Hand:</strong> {_format_currency(data.available_funds, currency)}</div>
@@ -907,13 +1047,6 @@ def generate_dashboard_html(
                     </tr>
                 </tfoot>
             </table>
-        </div>
-
-        <!-- ===== BUDGET TAB ===== -->
-        <div id="budget" class="tab-content">
-            <div id="budget-content">
-                {_render_budget_section(data, currency)}
-            </div>
         </div>
 
         <!-- ===== TRANSACTIONS TAB ===== -->
@@ -1257,7 +1390,7 @@ def generate_dashboard_html(
         }}, plotlyConfig);
 
         // Transactions with pagination and sorting
-        const transactionsData = {json.dumps(transactions_data)};
+        let transactionsData = {json.dumps(transactions_data)};
         let currentPage = 1;
         let itemsPerPage = 50;
         let sortColumn = 'date';
@@ -1472,13 +1605,13 @@ def _get_period_switch_js(currency: str) -> str:
         function updateCoverageIndicator(kpis) {{
             const container = document.getElementById('coverage-container');
             if (!container) return;
-            const canCover = kpis.can_cover;
-            const icon = canCover ? '\\u2713' : '\\u26a0';
+            const isOk = kpis.uncovered_savings === 0 || kpis.can_cover;
+            const icon = isOk ? '\\u2713' : '\\u26a0';
             const coverText = kpis.uncovered_savings === 0 ? 'All savings targets are met!' :
-                (canCover ? 'You can cover the savings gap of ' + formatCurrency(kpis.uncovered_savings) :
+                (kpis.can_cover ? 'You can cover the savings gap of ' + formatCurrency(kpis.uncovered_savings) :
                 'Cannot cover savings gap of ' + formatCurrency(kpis.uncovered_savings));
             container.innerHTML = `
-                <div class="coverage-indicator ${{canCover ? 'ok' : 'warning'}}">
+                <div class="coverage-indicator ${{isOk ? 'ok' : 'warning'}}">
                     <div class="coverage-title">Coverage Indicator</div>
                     <div class="coverage-status">
                         <span class="icon">${{icon}}</span>
@@ -1510,17 +1643,17 @@ def _get_period_switch_js(currency: str) -> str:
             // Update coverage
             const savingsCoverage = document.getElementById('savings-coverage-container');
             if (savingsCoverage) {{
-                const canCover = kpis.can_cover;
-                const icon = canCover ? '\\u2713' : '\\u26a0';
+                const isOk = kpis.uncovered_savings === 0 || kpis.can_cover;
+                const icon = isOk ? '\\u2713' : '\\u26a0';
                 savingsCoverage.innerHTML = `
-                    <div class="coverage-indicator ${{canCover ? 'ok' : 'warning'}}">
+                    <div class="coverage-indicator ${{isOk ? 'ok' : 'warning'}}">
                         <div class="coverage-title">Coverage Status</div>
                         <div class="coverage-status">
                             <span class="icon">${{icon}}</span>
                             <div>
                                 <div><strong>Uncovered Savings:</strong> ${{formatCurrency(kpis.uncovered_savings)}}</div>
                                 <div><strong>Cash on Hand:</strong> ${{formatCurrency(kpis.available_funds)}}</div>
-                                <div><strong>Can Cover:</strong> ${{canCover ? 'Yes' : 'No'}}</div>
+                                <div><strong>Can Cover:</strong> ${{kpis.can_cover ? 'Yes' : 'No'}}</div>
                                 <div><strong>True Discretionary:</strong> ${{formatCurrency(kpis.true_discretionary)}}</div>
                             </div>
                         </div>
@@ -1548,32 +1681,92 @@ def _get_period_switch_js(currency: str) -> str:
             const container = document.getElementById('budget-content');
             if (!container) return;
             const budget = data.budget;
+            const kpis = data.kpis;
             if (!budget.has_plan) {{
                 container.innerHTML = '<p>No budget plan available for this period.</p>';
                 return;
             }}
-            let html = '';
+            let html = '<div class="budget-sections-grid">';
             function renderBar(label, actual, planned, isTarget) {{
                 if (planned === 0) return '';
                 const pct = (actual / planned * 100);
                 const diff = actual - planned;
-                const diffPct = (diff / planned * 100);
-                let barClass, diffClass;
+                const diffPct = Math.abs(diff / planned * 100);
+                let barClass, badgeClass, badgeText;
                 if (isTarget) {{
-                    barClass = pct >= 100 ? (pct > 100 ? 'exceeded' : 'ok') : (pct >= 80 ? 'warning' : 'danger');
-                    diffClass = pct >= 100 ? (pct > 100 ? 'exceeded' : 'positive') : 'negative';
+                    if (pct > 100) {{
+                        barClass = 'exceeded';
+                        badgeClass = 'exceeded-good';
+                        badgeText = `\u2713 Exceeded +${{diffPct.toFixed(0)}}%`;
+                    }} else if (pct >= 95) {{
+                        barClass = 'ok';
+                        badgeClass = 'ok';
+                        badgeText = '\u2713 On target';
+                    }} else if (pct >= 80) {{
+                        barClass = 'warning';
+                        badgeClass = 'warning';
+                        badgeText = `\u26a0 ${{(100-pct).toFixed(0)}}% below`;
+                    }} else {{
+                        barClass = 'danger';
+                        badgeClass = 'danger';
+                        badgeText = `\u2717 ${{(100-pct).toFixed(0)}}% below`;
+                    }}
                 }} else {{
-                    barClass = pct <= 100 ? 'ok' : 'danger';
-                    diffClass = pct <= 100 ? 'positive' : 'negative';
+                    if (pct > 100) {{
+                        barClass = 'danger';
+                        badgeClass = 'danger';
+                        badgeText = `\u2717 Over +${{diffPct.toFixed(0)}}%`;
+                    }} else if (pct >= 90) {{
+                        barClass = 'warning';
+                        badgeClass = 'warning';
+                        badgeText = `\u26a0 ${{pct.toFixed(0)}}% used`;
+                    }} else if (pct >= 80) {{
+                        barClass = 'ok';
+                        badgeClass = 'ok';
+                        badgeText = `\u2713 ${{(100-pct).toFixed(0)}}% left`;
+                    }} else {{
+                        barClass = 'ok';
+                        badgeClass = 'ok';
+                        badgeText = `\u2713 Under -${{diffPct.toFixed(0)}}%`;
+                    }}
                 }}
-                const diffText = (diff >= 0 ? '+' : '') + formatCurrency(diff) + ', ' + (diff >= 0 ? '+' : '') + diffPct.toFixed(1) + '%';
-                return `<div class="budget-bar"><div class="label">${{label}}</div><div class="bar-container"><div class="bar ${{barClass}}" style="width:${{Math.min(pct, 100)}}%"></div></div><div class="value"><span style="font-weight:600">${{formatCurrency(actual)}}</span> / ${{formatCurrency(planned)}} <span class="${{diffClass}}" style="font-size:0.8rem">(${{diffText}})</span></div></div>`;
+                return `<div class="budget-bar"><div class="bar-container"><div class="bar ${{barClass}}" style="width:${{Math.min(pct, 100)}}%"></div></div><div class="value"><span class="actual">${{formatCurrency(actual)}}</span><span class="planned">of ${{formatCurrency(planned)}}</span><span class="status-badge ${{badgeClass}}">${{badgeText}}</span></div></div>`;
             }}
-            if (budget.gross_income_planned > 0) html += '<h2 class="section-title">Income</h2>' + renderBar('Gross Income', budget.gross_income_actual, budget.gross_income_planned, true);
-            if (budget.deductions_planned > 0) html += '<h2 class="section-title">Deductions</h2>' + renderBar('Total Deductions', budget.deductions_actual, budget.deductions_planned, false);
-            if (budget.fixed_planned > 0) html += '<h2 class="section-title">Fixed Expenses</h2>' + renderBar('Total Fixed', budget.fixed_actual, budget.fixed_planned, false);
-            if (budget.flexible_planned > 0) html += '<h2 class="section-title">Flexible Spending</h2>' + renderBar('Disposable', budget.flexible_actual, budget.flexible_planned, false);
-            if (budget.savings_planned > 0) html += '<h2 class="section-title">Savings</h2>' + renderBar('Savings Target', budget.savings_actual, budget.savings_planned, true);
+            if (budget.gross_income_planned > 0) {{
+                const cashOnHand = kpis.available_funds;
+                const cashClass = cashOnHand >= 0 ? 'positive' : 'negative';
+                html += '<div class="budget-section"><h3>Income</h3>' + renderBar('Gross Income', budget.gross_income_actual, budget.gross_income_planned, true);
+                html += `<div class="budget-cumulative"><span class="cumulative-label">Cash on Hand:</span><span class="cumulative-value ${{cashClass}}">${{formatCurrency(cashOnHand)}}</span><span class="cumulative-label">(Balance ${{formatCurrency(kpis.current_balance)}} − Savings ${{formatCurrency(kpis.total_savings)}})</span></div>`;
+                const hasDeductions = budget.deductions_planned > 0;
+                const hasFixed = budget.fixed_planned > 0;
+                if (hasDeductions || hasFixed) {{
+                    html += '<div class="budget-subsections">';
+                    if (hasDeductions) {{
+                        html += '<div class="budget-subsection"><h4>Deductions</h4>' + renderBar('Total', budget.deductions_actual, budget.deductions_planned, false) + '</div>';
+                    }}
+                    if (hasFixed) {{
+                        html += '<div class="budget-subsection"><h4>Fixed Expenses</h4>' + renderBar('Total', budget.fixed_actual, budget.fixed_planned, false) + '</div>';
+                    }}
+                    html += '</div>';
+                }}
+                html += '</div>';
+            }}
+            if (budget.flexible_planned > 0) {{
+                const remaining = budget.flexible_planned - budget.flexible_actual;
+                const remainingClass = remaining >= 0 ? 'positive' : 'negative';
+                html += '<div class="budget-section"><h3>Flexible Spending</h3>' + renderBar('Disposable', budget.flexible_actual, budget.flexible_planned, false);
+                html += `<div class="budget-cumulative"><span class="cumulative-label">Remaining:</span><span class="cumulative-value ${{remainingClass}}">${{formatCurrency(remaining)}}</span></div></div>`;
+            }}
+            if (budget.savings_planned > 0) {{
+                const cumSavings = kpis.total_savings;
+                const cumTarget = kpis.planned_savings;
+                const cumDiff = cumSavings - cumTarget;
+                const cumDiffClass = cumDiff >= 0 ? 'positive' : 'negative';
+                const cumDiffText = (cumDiff >= 0 ? '+' : '') + formatCurrency(cumDiff);
+                html += '<div class="budget-section"><h3>Savings</h3>' + renderBar('This Period', budget.savings_actual, budget.savings_planned, true);
+                html += `<div class="budget-cumulative"><span class="cumulative-label">Cumulative:</span><span class="cumulative-value">${{formatCurrency(cumSavings)}}</span><span class="cumulative-label">vs target</span><span class="cumulative-value">${{formatCurrency(cumTarget)}}</span><span class="cumulative-value ${{cumDiffClass}}">(${{cumDiffText}})</span></div></div>`;
+            }}
+            html += '</div>';
             // Category breakdown
             if (data.categories && data.categories.length > 0) {{
                 html += '<h2 class="section-title">Category Breakdown</h2><table><thead><tr><th>Category</th><th class="number">Actual</th><th class="number">%</th><th class="number">Planned</th><th class="number">%</th><th class="number">Variance</th><th class="number">Var %</th></tr></thead><tbody>';
@@ -1666,7 +1859,7 @@ def _render_budget_bar(
     currency: str,
     is_target: bool = False,
 ) -> str:
-    """Render a budget progress bar with variance info.
+    """Render a budget progress bar with status badge.
 
     Args:
         label: Bar label.
@@ -1681,51 +1874,55 @@ def _render_budget_bar(
 
     pct = float(actual / planned * 100)
     diff = actual - planned
-    diff_pct = float(diff / planned * 100) if planned else 0
+    diff_pct = abs(float(diff / planned * 100)) if planned else 0
 
-    # Determine bar class and badge
+    # Determine bar class and status badge
     if is_target:
         # For targets (income, savings): higher is better
-        if pct >= 100:
-            bar_class = "exceeded" if pct > 100 else "ok"
-            badge_html = f'<span class="budget-badge exceeded">\u2713 Exceeded</span>' if pct > 100 else ''
-            diff_class = "exceeded" if pct > 100 else "positive"
+        if pct > 100:
+            bar_class = "exceeded"
+            badge_class = "exceeded-good"
+            badge_text = f"\u2713 Exceeded +{diff_pct:.0f}%"
+        elif pct >= 95:
+            bar_class = "ok"
+            badge_class = "ok"
+            badge_text = "\u2713 On target"
         elif pct >= 80:
             bar_class = "warning"
-            badge_html = ""
-            diff_class = "negative"
+            badge_class = "warning"
+            badge_text = f"\u26a0 {100-pct:.0f}% below"
         else:
             bar_class = "danger"
-            badge_html = ""
-            diff_class = "negative"
+            badge_class = "danger"
+            badge_text = f"\u2717 {100-pct:.0f}% below"
     else:
         # For expenses: lower is better
-        if pct <= 100:
-            bar_class = "ok"
-            badge_html = f'<span class="budget-badge under">\u2713 Under</span>' if pct < 90 else ''
-            diff_class = "positive"
-        else:
+        if pct > 100:
             bar_class = "danger"
-            badge_html = f'<span class="budget-badge over">\u26a0 Over</span>'
-            diff_class = "negative"
-
-    # Format diff text
-    if diff >= 0:
-        diff_text = f"+{_format_currency(diff, currency)}, +{diff_pct:.1f}%"
-    else:
-        diff_text = f"{_format_currency(diff, currency)}, {diff_pct:.1f}%"
+            badge_class = "danger"
+            badge_text = f"\u2717 Over +{diff_pct:.0f}%"
+        elif pct >= 90:
+            bar_class = "warning"
+            badge_class = "warning"
+            badge_text = f"\u26a0 {pct:.0f}% used"
+        elif pct >= 80:
+            bar_class = "ok"
+            badge_class = "ok"
+            badge_text = f"\u2713 {100-pct:.0f}% left"
+        else:
+            bar_class = "ok"
+            badge_class = "ok"
+            badge_text = f"\u2713 Under -{diff_pct:.0f}%"
 
     return f"""
         <div class="budget-bar">
-            <div class="label">{label}</div>
             <div class="bar-container">
                 <div class="bar {bar_class}" style="width: {min(pct, 100)}%"></div>
             </div>
             <div class="value">
-                <span class="actual">{_format_currency(actual, currency)}</span> /
-                <span class="planned">{_format_currency(planned, currency)}</span>
-                <span class="diff {diff_class}">({diff_text})</span>
-                {badge_html}
+                <span class="actual">{_format_currency(actual, currency)}</span>
+                <span class="planned">of {_format_currency(planned, currency)}</span>
+                <span class="status-badge {badge_class}">{badge_text}</span>
             </div>
         </div>
     """
@@ -1739,37 +1936,105 @@ def _render_budget_section(data: DashboardData, currency: str) -> str:
     plan = data.plan
     summary = data.current_period_summary
 
-    html = ""
+    # Build deductions breakdown
+    deductions_by_cat: dict[str, Decimal] = {}
+    for tx in data.transactions:
+        if tx.is_deduction and tx.amount < 0:
+            cat = tx.category
+            deductions_by_cat[cat] = deductions_by_cat.get(cat, Decimal(0)) + abs(tx.amount)
 
-    # Income section
+    html = '<div class="budget-sections-grid">'
+
+    # Income section (with nested Deductions and Fixed Expenses)
     if plan.gross_income > 0:
         actual_income = summary.total_income if summary else Decimal(0)
-        html += '<h2 class="section-title">Income</h2>'
+        html += '<div class="budget-section"><h3>Income</h3>'
         html += _render_budget_bar("Gross Income", actual_income, plan.gross_income, currency, is_target=True)
 
-    # Deductions section
-    if plan.total_deductions > 0:
-        actual_ded = summary.total_deductions if summary else Decimal(0)
-        html += '<h2 class="section-title">Deductions</h2>'
-        html += _render_budget_bar("Total Deductions", actual_ded, plan.total_deductions, currency, is_target=False)
+        # Cash on Hand = Cumulative Balance - Cumulative Savings
+        cash_on_hand = data.available_funds
+        cash_class = "positive" if cash_on_hand >= 0 else "negative"
+        html += f'''
+        <div class="budget-cumulative">
+            <span class="cumulative-label">Cash on Hand:</span>
+            <span class="cumulative-value {cash_class}">{_format_currency(cash_on_hand, currency)}</span>
+            <span class="cumulative-label">(Balance {_format_currency(data.current_balance, currency)} − Savings {_format_currency(data.total_savings, currency)})</span>
+        </div>
+        '''
 
-    # Fixed expenses section
-    if plan.total_fixed_expenses > 0:
-        actual_fixed = summary.total_fixed_expenses if summary else Decimal(0)
-        html += '<h2 class="section-title">Fixed Expenses</h2>'
-        html += _render_budget_bar("Total Fixed", actual_fixed, plan.total_fixed_expenses, currency, is_target=False)
+        # Nested subsections: Deductions and Fixed Expenses
+        has_deductions = plan.total_deductions > 0
+        has_fixed = plan.total_fixed_expenses > 0
+        if has_deductions or has_fixed:
+            html += '<div class="budget-subsections">'
+
+            # Deductions subsection
+            if has_deductions:
+                actual_ded = summary.total_deductions if summary else Decimal(0)
+                html += '<div class="budget-subsection"><h4>Deductions</h4>'
+                html += _render_budget_bar("Total", actual_ded, plan.total_deductions, currency, is_target=False)
+                if deductions_by_cat:
+                    html += '<details class="budget-breakdown"><summary>Show breakdown</summary><div class="budget-breakdown-items">'
+                    for cat, amount in sorted(deductions_by_cat.items(), key=lambda x: x[1], reverse=True):
+                        html += f'<div class="budget-breakdown-item"><span class="cat-name">{cat}</span><span class="cat-amount">{_format_currency(amount, currency)}</span></div>'
+                    html += '</div></details>'
+                html += '</div>'
+
+            # Fixed Expenses subsection
+            if has_fixed:
+                actual_fixed = summary.total_fixed_expenses if summary else Decimal(0)
+                html += '<div class="budget-subsection"><h4>Fixed Expenses</h4>'
+                html += _render_budget_bar("Total", actual_fixed, plan.total_fixed_expenses, currency, is_target=False)
+                if summary and summary.fixed_expenses_by_category:
+                    html += '<details class="budget-breakdown"><summary>Show breakdown</summary><div class="budget-breakdown-items">'
+                    for cat, amount in sorted(summary.fixed_expenses_by_category.items(), key=lambda x: x[1], reverse=True):
+                        html += f'<div class="budget-breakdown-item"><span class="cat-name">{cat}</span><span class="cat-amount">{_format_currency(amount, currency)}</span></div>'
+                    html += '</div></details>'
+                html += '</div>'
+
+            html += '</div>'  # Close budget-subsections
+
+        html += '</div>'  # Close Income section
 
     # Flexible spending section
     if plan.disposable_income > 0:
         actual_flex = summary.total_flexible_expenses if summary else Decimal(0)
-        html += '<h2 class="section-title">Flexible Spending</h2>'
+        remaining = plan.disposable_income - actual_flex
+        remaining_class = "positive" if remaining >= 0 else "negative"
+        html += '<div class="budget-section"><h3>Flexible Spending</h3>'
         html += _render_budget_bar("Disposable", actual_flex, plan.disposable_income, currency, is_target=False)
+        html += f'''
+        <div class="budget-cumulative">
+            <span class="cumulative-label">Remaining:</span>
+            <span class="cumulative-value {remaining_class}">{_format_currency(remaining, currency)}</span>
+        </div>
+        '''
+        html += '</div>'
 
     # Savings section
     if plan.savings_target > 0:
         actual_savings = summary.total_savings if summary else Decimal(0)
-        html += '<h2 class="section-title">Savings</h2>'
-        html += _render_budget_bar("Savings Target", actual_savings, plan.savings_target, currency, is_target=True)
+        html += '<div class="budget-section"><h3>Savings</h3>'
+        html += _render_budget_bar("This Period", actual_savings, plan.savings_target, currency, is_target=True)
+
+        # Cumulative savings vs target
+        cum_savings = data.total_savings
+        cum_target = data.planned_savings
+        cum_diff = cum_savings - cum_target
+        cum_diff_class = "positive" if cum_diff >= 0 else "negative"
+        cum_diff_text = f"+{_format_currency(cum_diff, currency)}" if cum_diff >= 0 else _format_currency(cum_diff, currency)
+        html += f'''
+        <div class="budget-cumulative">
+            <span class="cumulative-label">Cumulative:</span>
+            <span class="cumulative-value">{_format_currency(cum_savings, currency)}</span>
+            <span class="cumulative-label">vs target</span>
+            <span class="cumulative-value">{_format_currency(cum_target, currency)}</span>
+            <span class="cumulative-value {cum_diff_class}">({cum_diff_text})</span>
+        </div>
+        '''
+        html += '</div>'
+
+    html += '</div>'  # Close budget-sections-grid
 
     # Category breakdown table - with percentages
     total_actual = sum(c.actual_amount for c in data.categories if c.actual_amount > 0)
