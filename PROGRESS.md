@@ -1,10 +1,31 @@
 # FinTrack - Progress Report
 
 ## Current State
-**Phase**: All-Periods Dashboard Refactoring (v0.3.4)
+**Phase**: Dashboard Improvements (v0.3.5)
 **Status**: Released
 **Last Updated**: 2025-12-23
-**Current Version**: 0.3.4
+**Current Version**: 0.3.5
+
+## What's New in v0.3.5
+
+### Critical Bug Fix
+- **Period switcher now works** - Fixed missing `formatCurrency()` JS function that was called 25+ times but never defined
+
+### New Features
+- **Deductions History Chart** - Dual Y-axis chart showing deductions amount (bars) and % of gross income (line)
+- **Transactions Pagination** - Navigate pages, configurable items per page (25/50/100/All)
+- **Table Sorting** - Click headers to sort by Date, Category, Description, or Amount
+- **Fixed Filter** - New "Fixed" option in transaction type filter
+
+### Visual Improvements
+- **Currency symbols in charts** - Hover tooltips now show € instead of "EUR" (and other currency symbols)
+- **Favicon** - Custom SVG icon (blue square with chart bars)
+- **Table column borders** - Subtle vertical borders for better readability
+- **Budget bar larger font** - Increased font size from 0.9rem to 1rem
+- **Charts full width** - Fixed Plotly charts being shifted left
+- **Sankey moved lower** - Sankey diagram now appears after Treemap
+
+---
 
 ## What's New in v0.3.4
 

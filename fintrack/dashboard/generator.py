@@ -83,6 +83,12 @@ def generate_dashboard_html(
     timeline_net = [float(p.net_flow) for p in data.timeline]
     timeline_fixed = [float(p.fixed_expenses) for p in data.timeline]
     timeline_flexible = [float(p.flexible_expenses) for p in data.timeline]
+    timeline_deductions = [float(p.deductions_this_period) for p in data.timeline]
+    timeline_deductions_pct = []
+    for p in data.timeline:
+        gross = p.income + p.deductions_this_period
+        pct = float(p.deductions_this_period / gross * 100) if gross > 0 else 0
+        timeline_deductions_pct.append(round(pct, 1))
 
     # Prepare category data for charts
     expense_cats = sorted(
@@ -234,6 +240,7 @@ def generate_dashboard_html(
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FinTrack Dashboard - {data.workspace_name}</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect x='2' y='2' width='28' height='28' rx='6' fill='%232563eb'/><rect x='7' y='18' width='4' height='8' rx='1' fill='white'/><rect x='14' y='12' width='4' height='14' rx='1' fill='white'/><rect x='21' y='6' width='4' height='20' rx='1' fill='white'/></svg>">
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
     <style>
         :root {{
@@ -366,6 +373,10 @@ def generate_dashboard_html(
             padding: 1.5rem;
             box-shadow: var(--card-shadow);
             margin-bottom: 2rem;
+            width: 100%;
+        }}
+        .chart-container > div {{
+            width: 100% !important;
         }}
         .chart-title {{ font-size: 1rem; font-weight: 600; margin-bottom: 1rem; color: var(--text-primary); }}
 
@@ -385,7 +396,8 @@ def generate_dashboard_html(
             box-shadow: var(--card-shadow);
             margin-bottom: 2rem;
         }}
-        th, td {{ padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border-color); }}
+        th, td {{ padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border-color); border-right: 1px solid var(--border-color); }}
+        th:last-child, td:last-child {{ border-right: none; }}
         th {{ background: var(--bg-secondary); font-weight: 600; color: var(--text-primary); }}
         td.number {{ text-align: right; font-variant-numeric: tabular-nums; }}
         tr:last-child td {{ border-bottom: none; }}
@@ -415,10 +427,10 @@ def generate_dashboard_html(
         .budget-bar .bar.warning {{ background: var(--warning); }}
         .budget-bar .bar.danger {{ background: var(--danger); }}
         .budget-bar .bar.exceeded {{ background: #8b5cf6; }}
-        .budget-bar .value {{ width: 200px; text-align: right; font-variant-numeric: tabular-nums; font-size: 0.9rem; }}
+        .budget-bar .value {{ min-width: 240px; text-align: right; font-variant-numeric: tabular-nums; font-size: 1rem; }}
         .budget-bar .value .actual {{ font-weight: 600; }}
         .budget-bar .value .planned {{ color: var(--text-secondary); }}
-        .budget-bar .value .diff {{ font-size: 0.8rem; margin-left: 0.25rem; }}
+        .budget-bar .value .diff {{ font-size: 0.9rem; margin-left: 0.25rem; display: inline-block; }}
         .budget-bar .value .diff.positive {{ color: var(--success); }}
         .budget-bar .value .diff.negative {{ color: var(--danger); }}
         .budget-bar .value .diff.exceeded {{ color: #8b5cf6; }}
@@ -501,6 +513,61 @@ def generate_dashboard_html(
         .flag.savings {{ background: #dbeafe; color: #1e40af; }}
         .flag.deduction {{ background: #fef3c7; color: #92400e; }}
         .flag.fixed {{ background: #f3e8ff; color: #6b21a8; }}
+
+        .pagination {{
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            justify-content: center;
+            margin-top: 1rem;
+            padding: 1rem;
+            background: var(--card-bg);
+            border-radius: 8px;
+        }}
+        .pagination button {{
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.2s;
+        }}
+        .pagination button:hover:not(:disabled) {{
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }}
+        .pagination button:disabled {{
+            opacity: 0.5;
+            cursor: not-allowed;
+        }}
+        .pagination select {{
+            padding: 0.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }}
+        .pagination .page-info {{
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }}
+
+        th.sortable {{
+            cursor: pointer;
+            user-select: none;
+        }}
+        th.sortable:hover {{
+            background: var(--gray-300);
+        }}
+        th .sort-indicator {{
+            opacity: 0.3;
+            margin-left: 0.25rem;
+        }}
+        th.sorted .sort-indicator {{
+            opacity: 1;
+        }}
 
         .filter-summary {{
             padding: 0.75rem 1rem;
@@ -724,16 +791,16 @@ def generate_dashboard_html(
             </div>
 
             <div class="chart-container">
+                <div class="chart-title">Expenses by Category</div>
+                <div id="chart-treemap"></div>
+            </div>
+
+            <div class="chart-container">
                 <div class="chart-title">Income Flow (Sankey Diagram)</div>
                 <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem;">
                     Shows money flow from Gross Income through deductions to Net Income, then to Fixed Expenses, Flexible Expenses, and Savings.
                 </p>
                 <div id="chart-sankey"></div>
-            </div>
-
-            <div class="chart-container">
-                <div class="chart-title">Expenses by Category</div>
-                <div id="chart-treemap"></div>
             </div>
 
             <div class="section-block historical">
@@ -742,6 +809,14 @@ def generate_dashboard_html(
                     <span class="section-badge historical">Historical</span>
                 </div>
                 <div id="chart-expenses-timeline"></div>
+            </div>
+
+            <div class="section-block historical">
+                <div class="section-header">
+                    <h3>Deductions Timeline (Amount and % of Gross)</h3>
+                    <span class="section-badge historical">Historical</span>
+                </div>
+                <div id="chart-deductions-timeline"></div>
             </div>
 
             <h2 class="section-title">Top Expenses</h2>
@@ -841,6 +916,7 @@ def generate_dashboard_html(
                     <option value="expense">Expense</option>
                     <option value="savings">Savings</option>
                     <option value="deduction">Deduction</option>
+                    <option value="fixed">Fixed</option>
                 </select>
                 <input type="text" id="filter-search" placeholder="Search description...">
                 <button class="export-btn" onclick="exportCSV()">Export CSV</button>
@@ -856,16 +932,27 @@ def generate_dashboard_html(
             <table id="transactions-table">
                 <thead>
                     <tr>
-                        <th>Date</th>
-                        <th>Category</th>
-                        <th>Description</th>
-                        <th class="number">Amount</th>
+                        <th class="sortable" onclick="sortTable('date')">Date <span class="sort-indicator">↕</span></th>
+                        <th class="sortable" onclick="sortTable('category')">Category <span class="sort-indicator">↕</span></th>
+                        <th class="sortable" onclick="sortTable('description')">Description <span class="sort-indicator">↕</span></th>
+                        <th class="number sortable" onclick="sortTable('amount')">Amount <span class="sort-indicator">↕</span></th>
                         <th>Flags</th>
                     </tr>
                 </thead>
                 <tbody id="transactions-body">
                 </tbody>
             </table>
+            <div class="pagination">
+                <button onclick="changePage(-1)" id="btn-prev">← Prev</button>
+                <span class="page-info" id="page-info">Page 1 of 1</span>
+                <button onclick="changePage(1)" id="btn-next">Next →</button>
+                <select id="items-per-page" onchange="changeItemsPerPage(this.value)">
+                    <option value="25">25 per page</option>
+                    <option value="50" selected>50 per page</option>
+                    <option value="100">100 per page</option>
+                    <option value="0">All</option>
+                </select>
+            </div>
         </div>
     </div>
 
@@ -882,7 +969,17 @@ def generate_dashboard_html(
 
         // Cash Reconciliation
         const currency = '{currency}';
+        const currencySymbols = {{"EUR": "€", "USD": "$", "GBP": "£", "RSD": "RSD "}};
+        const currencySymbol = currencySymbols[currency] || (currency + " ");
         const availableFunds = {float(data.available_funds)};
+
+        // Format currency with proper symbol
+        function formatCurrency(value) {{
+            if (value < 0) {{
+                return "-" + currencySymbol + Math.abs(value).toLocaleString('en-US', {{minimumFractionDigits: 2, maximumFractionDigits: 2}});
+            }}
+            return currencySymbol + value.toLocaleString('en-US', {{minimumFractionDigits: 2, maximumFractionDigits: 2}});
+        }}
 
         function addCashRow() {{
             const container = document.getElementById('cash-inputs');
@@ -906,7 +1003,7 @@ def generate_dashboard_html(
             document.querySelectorAll('.cash-amount').forEach(input => {{
                 total += parseFloat(input.value) || 0;
             }});
-            document.getElementById('cash-total-value').textContent = currency + ' ' + total.toFixed(2);
+            document.getElementById('cash-total-value').textContent = formatCurrency(total);
 
             const diff = total - availableFunds;
             const comparison = document.getElementById('cash-comparison');
@@ -934,6 +1031,8 @@ def generate_dashboard_html(
         const timelineNet = {json.dumps(timeline_net)};
         const timelineFixed = {json.dumps(timeline_fixed)};
         const timelineFlexible = {json.dumps(timeline_flexible)};
+        const timelineDeductions = {json.dumps(timeline_deductions)};
+        const timelineDeductionsPct = {json.dumps(timeline_deductions_pct)};
 
         // Theme-aware Plotly layout (Grafana-style dark theme)
         const isDarkTheme = document.documentElement.getAttribute('data-theme') === 'dark';
@@ -964,7 +1063,7 @@ def generate_dashboard_html(
         }};
 
         // Hover template helper for currency formatting
-        const currencyHover = '%{{x}}<br>%{{fullData.name}}: ' + '{currency}' + ' %{{y:,.2f}}<extra></extra>';
+        const currencyHover = '%{{x}}<br>%{{fullData.name}}: ' + currencySymbol + '%{{y:,.2f}}<extra></extra>';
 
         // Timeline chart (with range slider for date filtering)
         Plotly.newPlot('chart-timeline', [
@@ -1003,6 +1102,26 @@ def generate_dashboard_html(
             yaxis: {{ ...plotlyLayout.yaxis, title: {{ text: 'Amount ({currency})', font: {{ color: textColor }} }} }},
         }}, {{ responsive: true }});
 
+        // Treemap (moved before Sankey as per user request)
+        const treemapHover = '%{{label}}<br>' + currencySymbol + '%{{value:,.2f}}<br>%{{percentRoot:.1%}}<extra></extra>';
+        Plotly.newPlot('chart-treemap', [{{
+            type: 'treemap',
+            labels: {json.dumps(expense_labels)},
+            parents: {json.dumps([''] * len(expense_labels))},
+            values: {json.dumps(expense_values)},
+            textinfo: 'label+value+percent root',
+            textfont: {{ color: '#ffffff' }},
+            hovertemplate: treemapHover,
+            marker: {{
+                colors: isDarkTheme ?
+                    ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'] :
+                    ['#2563eb', '#16a34a', '#ca8a04', '#dc2626', '#7c3aed', '#db2777', '#0891b2', '#65a30d'],
+            }},
+        }}], {{
+            ...plotlyLayout,
+            margin: {{ t: 20, r: 20, b: 20, l: 20 }},
+        }}, {{ responsive: true }});
+
         // Sankey
         Plotly.newPlot('chart-sankey', [{{
             type: 'sankey',
@@ -1012,31 +1131,14 @@ def generate_dashboard_html(
                 thickness: 20,
                 label: {json.dumps(sankey_nodes)},
                 color: isDarkTheme ? '#3b82f6' : '#2563eb',
+                hovertemplate: '%{{label}}<br>' + currencySymbol + '%{{value:,.2f}}<extra></extra>',
             }},
             link: {{
                 source: {json.dumps(sankey_source)},
                 target: {json.dumps(sankey_target)},
                 value: {json.dumps(sankey_value)},
                 color: isDarkTheme ? 'rgba(59,130,246,0.4)' : 'rgba(37,99,235,0.3)',
-            }},
-        }}], {{
-            ...plotlyLayout,
-            margin: {{ t: 20, r: 20, b: 20, l: 20 }},
-        }}, {{ responsive: true }});
-
-        // Treemap
-        Plotly.newPlot('chart-treemap', [{{
-            type: 'treemap',
-            labels: {json.dumps(expense_labels)},
-            parents: {json.dumps([''] * len(expense_labels))},
-            values: {json.dumps(expense_values)},
-            textinfo: 'label+value+percent root',
-            textfont: {{ color: '#ffffff' }},
-            hovertemplate: '%{{label}}<br>{currency} %{{value:,.2f}}<br>%{{percentRoot:.1%}}<extra></extra>',
-            marker: {{
-                colors: isDarkTheme ?
-                    ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'] :
-                    ['#2563eb', '#16a34a', '#ca8a04', '#dc2626', '#7c3aed', '#db2777', '#0891b2', '#65a30d'],
+                hovertemplate: '%{{source.label}} → %{{target.label}}<br>' + currencySymbol + '%{{value:,.2f}}<extra></extra>',
             }},
         }}], {{
             ...plotlyLayout,
@@ -1061,6 +1163,55 @@ def generate_dashboard_html(
             yaxis: {{ ...plotlyLayout.yaxis, title: {{ text: 'Expenses ({currency})', font: {{ color: textColor }} }} }},
         }}, {{ responsive: true }});
 
+        // Deductions timeline (dual Y-axis: amount and percentage)
+        Plotly.newPlot('chart-deductions-timeline', [
+            {{
+                x: timelineLabels,
+                y: timelineDeductions,
+                name: 'Deductions (Amount)',
+                type: 'bar',
+                marker: {{ color: '#f59e0b' }},
+                hovertemplate: '%{{x}}<br>Amount: ' + currencySymbol + '%{{y:,.2f}}<extra></extra>',
+                yaxis: 'y'
+            }},
+            {{
+                x: timelineLabels,
+                y: timelineDeductionsPct,
+                name: 'Deductions (% of Gross)',
+                type: 'scatter',
+                mode: 'lines+markers',
+                line: {{ color: '#ef4444', width: 2 }},
+                marker: {{ size: 6 }},
+                hovertemplate: '%{{x}}<br>% of Gross: %{{y:.1f}}%<extra></extra>',
+                yaxis: 'y2'
+            }},
+        ], {{
+            ...plotlyLayout,
+            margin: {{ t: 20, r: 60, b: 80, l: 60 }},
+            legend: {{ orientation: 'h', y: 1.1, bgcolor: 'rgba(0,0,0,0)', font: {{ color: textColor }} }},
+            xaxis: {{
+                ...plotlyLayout.xaxis,
+                title: {{ text: '{interval_label}', font: {{ color: textColor }} }},
+                rangeslider: {{ visible: true, thickness: 0.1, bgcolor: plotBg }},
+                type: 'category'
+            }},
+            yaxis: {{
+                ...plotlyLayout.yaxis,
+                title: {{ text: 'Amount (' + currencySymbol + ')', font: {{ color: textColor }} }},
+                side: 'left'
+            }},
+            yaxis2: {{
+                title: {{ text: '% of Gross Income', font: {{ color: textColor }} }},
+                overlaying: 'y',
+                side: 'right',
+                ticksuffix: '%',
+                gridcolor: 'rgba(0,0,0,0)',
+                tickcolor: textColor,
+                tickfont: {{ color: textColor }},
+                titlefont: {{ color: textColor }}
+            }},
+        }}, {{ responsive: true }});
+
         // Savings timeline (with range slider)
         Plotly.newPlot('chart-savings-timeline', [
             {{ x: timelineLabels, y: timelineSavings, name: 'Actual Savings', type: 'scatter', fill: 'tozeroy', line: {{ color: '#22c55e' }}, hovertemplate: currencyHover }},
@@ -1078,8 +1229,13 @@ def generate_dashboard_html(
             yaxis: {{ ...plotlyLayout.yaxis, title: {{ text: 'Cumulative Savings ({currency})', font: {{ color: textColor }} }} }},
         }}, {{ responsive: true }});
 
-        // Transactions
+        // Transactions with pagination and sorting
         const transactionsData = {json.dumps(transactions_data)};
+        let currentPage = 1;
+        let itemsPerPage = 50;
+        let sortColumn = 'date';
+        let sortDirection = 'desc';
+        let filteredData = [...transactionsData];
 
         function renderTransactions(data) {{
             const tbody = document.getElementById('transactions-body');
@@ -1095,7 +1251,7 @@ def generate_dashboard_html(
                     <td>${{tx.date}}</td>
                     <td>${{tx.category}}</td>
                     <td>${{tx.description}}</td>
-                    <td class="number ${{tx.amount >= 0 ? 'positive' : 'negative'}}">${{currency}} ${{tx.amount.toFixed(2)}}</td>
+                    <td class="number ${{tx.amount >= 0 ? 'positive' : 'negative'}}">${{formatCurrency(tx.amount)}}</td>
                     <td>${{flags}}</td>
                 `;
                 tbody.appendChild(row);
@@ -1108,12 +1264,50 @@ def generate_dashboard_html(
             const expenses = data.filter(tx => tx.amount < 0 && !tx.is_savings && !tx.is_deduction).reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
 
             document.getElementById('filtered-count').textContent = data.length;
-            document.getElementById('filtered-total').textContent = currency + ' ' + total.toFixed(2);
-            document.getElementById('filtered-income').textContent = currency + ' ' + income.toFixed(2);
-            document.getElementById('filtered-expenses').textContent = currency + ' ' + expenses.toFixed(2);
-
-            // Update colors
+            document.getElementById('filtered-total').textContent = formatCurrency(total);
+            document.getElementById('filtered-income').textContent = formatCurrency(income);
+            document.getElementById('filtered-expenses').textContent = formatCurrency(expenses);
             document.getElementById('filtered-total').className = total >= 0 ? 'stat-value positive' : 'stat-value negative';
+        }}
+
+        function updatePagination(totalItems) {{
+            const totalPages = itemsPerPage === 0 ? 1 : Math.ceil(totalItems / itemsPerPage);
+            if (currentPage > totalPages) currentPage = totalPages || 1;
+
+            document.getElementById('page-info').textContent = itemsPerPage === 0
+                ? `Showing all ${{totalItems}} items`
+                : `Page ${{currentPage}} of ${{totalPages}} (${{totalItems}} items)`;
+            document.getElementById('btn-prev').disabled = currentPage <= 1;
+            document.getElementById('btn-next').disabled = currentPage >= totalPages;
+        }}
+
+        function sortData(data) {{
+            return [...data].sort((a, b) => {{
+                let aVal = a[sortColumn];
+                let bVal = b[sortColumn];
+
+                if (sortColumn === 'amount') {{
+                    return sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+                }}
+
+                aVal = String(aVal).toLowerCase();
+                bVal = String(bVal).toLowerCase();
+                if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+                if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+                return 0;
+            }});
+        }}
+
+        function updateSortIndicators() {{
+            document.querySelectorAll('th.sortable').forEach(th => {{
+                th.classList.remove('sorted');
+                th.querySelector('.sort-indicator').textContent = '↕';
+            }});
+            const activeHeader = document.querySelector(`th[onclick="sortTable('${{sortColumn}}')"]`);
+            if (activeHeader) {{
+                activeHeader.classList.add('sorted');
+                activeHeader.querySelector('.sort-indicator').textContent = sortDirection === 'asc' ? '↑' : '↓';
+            }}
         }}
 
         function filterTransactions() {{
@@ -1121,25 +1315,62 @@ def generate_dashboard_html(
             const type = document.getElementById('filter-type').value;
             const search = document.getElementById('filter-search').value.toLowerCase();
 
-            let filtered = transactionsData.filter(tx => {{
+            filteredData = transactionsData.filter(tx => {{
                 if (category && tx.category !== category) return false;
                 if (type === 'income' && tx.amount <= 0) return false;
                 if (type === 'expense' && (tx.amount >= 0 || tx.is_savings || tx.is_deduction)) return false;
                 if (type === 'savings' && !tx.is_savings) return false;
                 if (type === 'deduction' && !tx.is_deduction) return false;
+                if (type === 'fixed' && !tx.is_fixed) return false;
                 if (search && !tx.description.toLowerCase().includes(search) && !tx.category.toLowerCase().includes(search)) return false;
                 return true;
             }});
-            renderTransactions(filtered);
-            updateFilterSummary(filtered);
+
+            currentPage = 1;
+            applyDisplaySettings();
+        }}
+
+        function applyDisplaySettings() {{
+            let data = sortData(filteredData);
+            updateFilterSummary(data);
+
+            if (itemsPerPage > 0) {{
+                const start = (currentPage - 1) * itemsPerPage;
+                data = data.slice(start, start + itemsPerPage);
+            }}
+
+            renderTransactions(data);
+            updatePagination(filteredData.length);
+            updateSortIndicators();
+        }}
+
+        function sortTable(column) {{
+            if (sortColumn === column) {{
+                sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+            }} else {{
+                sortColumn = column;
+                sortDirection = column === 'amount' ? 'desc' : 'asc';
+            }}
+            applyDisplaySettings();
+        }}
+
+        function changePage(delta) {{
+            currentPage += delta;
+            applyDisplaySettings();
+        }}
+
+        function changeItemsPerPage(value) {{
+            itemsPerPage = parseInt(value);
+            currentPage = 1;
+            applyDisplaySettings();
         }}
 
         document.getElementById('filter-category').addEventListener('change', filterTransactions);
         document.getElementById('filter-type').addEventListener('change', filterTransactions);
         document.getElementById('filter-search').addEventListener('input', filterTransactions);
 
-        renderTransactions(transactionsData);
-        updateFilterSummary(transactionsData);
+        filteredData = [...transactionsData];
+        applyDisplaySettings();
 
         function exportCSV() {{
             let csv = 'Date,Category,Description,Amount,Savings,Deduction,Fixed\\n';
@@ -1220,10 +1451,10 @@ def _get_period_switch_js(currency: str) -> str:
                 (canCover ? 'You can cover the savings gap of ' + formatCurrency(kpis.uncovered_savings) :
                 'Cannot cover savings gap of ' + formatCurrency(kpis.uncovered_savings));
             container.innerHTML = `
-                <div class="coverage-indicator ${{canCover ? 'can-cover' : 'cannot-cover'}}">
+                <div class="coverage-indicator ${{canCover ? 'ok' : 'warning'}}">
                     <div class="coverage-title">Coverage Indicator</div>
                     <div class="coverage-status">
-                        <span class="coverage-icon">${{icon}}</span>
+                        <span class="icon">${{icon}}</span>
                         <span>${{coverText}}</span>
                     </div>
                 </div>`;
@@ -1255,10 +1486,10 @@ def _get_period_switch_js(currency: str) -> str:
                 const canCover = kpis.can_cover;
                 const icon = canCover ? '\\u2713' : '\\u26a0';
                 savingsCoverage.innerHTML = `
-                    <div class="coverage-indicator ${{canCover ? 'can-cover' : 'cannot-cover'}}">
+                    <div class="coverage-indicator ${{canCover ? 'ok' : 'warning'}}">
                         <div class="coverage-title">Coverage Status</div>
                         <div class="coverage-status">
-                            <span class="coverage-icon">${{icon}}</span>
+                            <span class="icon">${{icon}}</span>
                             <div>
                                 <div><strong>Uncovered Savings:</strong> ${{formatCurrency(kpis.uncovered_savings)}}</div>
                                 <div><strong>Cash on Hand:</strong> ${{formatCurrency(kpis.available_funds)}}</div>
