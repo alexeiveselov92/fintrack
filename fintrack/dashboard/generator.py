@@ -970,13 +970,23 @@ def generate_dashboard_html(
     </div>
 
     <script>
-        // Tab switching
+        // Tab switching with Plotly resize
         document.querySelectorAll('.tab').forEach(tab => {{
             tab.addEventListener('click', () => {{
                 document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
                 document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
                 tab.classList.add('active');
-                document.getElementById(tab.dataset.tab).classList.add('active');
+                const activeTab = document.getElementById(tab.dataset.tab);
+                activeTab.classList.add('active');
+
+                // Resize all Plotly charts in the newly visible tab
+                setTimeout(() => {{
+                    activeTab.querySelectorAll('[id^="chart-"]').forEach(chartDiv => {{
+                        if (chartDiv.data) {{
+                            Plotly.Plots.resize(chartDiv);
+                        }}
+                    }});
+                }}, 50);
             }});
         }});
 
