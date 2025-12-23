@@ -381,6 +381,14 @@ def generate_dashboard_html(
         }}
         .chart-title {{ font-size: 1rem; font-weight: 600; margin-bottom: 1rem; color: var(--text-primary); }}
 
+        /* Plotly chart containers - ensure full width */
+        .js-plotly-plot, .plotly {{
+            width: 100% !important;
+        }}
+        [id^="chart-"] {{
+            width: 100% !important;
+        }}
+
         .section-title {{
             font-size: 1.25rem;
             font-weight: 600;
@@ -589,6 +597,10 @@ def generate_dashboard_html(
             margin-bottom: 2rem;
             box-shadow: var(--card-shadow);
             border-left: 4px solid var(--primary);
+            width: 100%;
+        }}
+        .section-block > div:not(.section-header) {{
+            width: 100% !important;
         }}
         .section-block.historical {{
             border-left-color: #6366f1;
