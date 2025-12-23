@@ -541,8 +541,29 @@ def generate_dashboard_html(
         .budget-breakdown-item .cat-amount {{ font-variant-numeric: tabular-nums; color: var(--text-secondary); }}
         .budget-subsections {{
             margin-top: 0.75rem;
-            padding-top: 0.75rem;
             border-top: 1px solid var(--border-color);
+        }}
+        .budget-subsections summary {{
+            padding: 0.5rem 0;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            list-style: none;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }}
+        .budget-subsections summary::-webkit-details-marker {{ display: none; }}
+        .budget-subsections summary::after {{
+            content: '\u25BC';
+            font-size: 0.6rem;
+            transition: transform 0.2s ease;
+        }}
+        .budget-subsections[open] summary::after {{
+            transform: rotate(180deg);
+        }}
+        .budget-subsections[open] {{
+            padding-top: 0;
         }}
         .budget-subsection {{
             background: var(--bg-secondary);
@@ -1740,14 +1761,14 @@ def _get_period_switch_js(currency: str) -> str:
                 const hasDeductions = budget.deductions_planned > 0;
                 const hasFixed = budget.fixed_planned > 0;
                 if (hasDeductions || hasFixed) {{
-                    html += '<div class="budget-subsections">';
+                    html += '<details class="budget-subsections"><summary>Deductions & Fixed Expenses</summary>';
                     if (hasDeductions) {{
                         html += '<div class="budget-subsection"><h4>Deductions</h4>' + renderBar('Total', budget.deductions_actual, budget.deductions_planned, false) + '</div>';
                     }}
                     if (hasFixed) {{
                         html += '<div class="budget-subsection"><h4>Fixed Expenses</h4>' + renderBar('Total', budget.fixed_actual, budget.fixed_planned, false) + '</div>';
                     }}
-                    html += '</div>';
+                    html += '</details>';
                 }}
                 html += '</div>';
             }}
@@ -1966,7 +1987,7 @@ def _render_budget_section(data: DashboardData, currency: str) -> str:
         has_deductions = plan.total_deductions > 0
         has_fixed = plan.total_fixed_expenses > 0
         if has_deductions or has_fixed:
-            html += '<div class="budget-subsections">'
+            html += '<details class="budget-subsections"><summary>Deductions & Fixed Expenses</summary>'
 
             # Deductions subsection
             if has_deductions:
@@ -1992,7 +2013,7 @@ def _render_budget_section(data: DashboardData, currency: str) -> str:
                     html += '</div></details>'
                 html += '</div>'
 
-            html += '</div>'  # Close budget-subsections
+            html += '</details>'  # Close budget-subsections
 
         html += '</div>'  # Close Income section
 
