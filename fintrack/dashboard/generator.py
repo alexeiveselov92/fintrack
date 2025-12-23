@@ -1815,6 +1815,9 @@ def _get_period_switch_js(currency: str) -> str:
             html += '</div>';
             // Category breakdown with mini progress bars
             if (data.categories && data.categories.length > 0) {{
+                let totalActual = 0, totalPlanned = 0;
+                data.categories.forEach(cat => {{ totalActual += cat.actual; if (cat.planned) totalPlanned += cat.planned; }});
+                const totalVariance = totalPlanned - totalActual;
                 html += '<h2 class="section-title">Category Breakdown</h2><table><thead><tr><th>Category</th><th class="number">Actual</th><th>vs Plan</th><th class="number">Variance</th></tr></thead><tbody>';
                 data.categories.forEach(cat => {{
                     let progressHtml = '-';
@@ -1836,7 +1839,9 @@ def _get_period_switch_js(currency: str) -> str:
                     }}
                     html += `<tr><td>${{cat.category}}${{cat.is_fixed ? ' <span class="flag fixed">Fixed</span>' : ''}}</td><td class="number">${{formatCurrency(cat.actual)}}</td><td>${{progressHtml}}</td><td class="number">${{varianceHtml}}</td></tr>`;
                 }});
-                html += '</tbody></table>';
+                const totalVarClass = totalVariance >= 0 ? 'positive' : 'negative';
+                const totalVarText = (totalVariance >= 0 ? '+' : '') + formatCurrency(totalVariance);
+                html += `</tbody><tfoot><tr style="background:var(--bg-secondary);font-weight:600;"><td>Total</td><td class="number">${{formatCurrency(totalActual)}}</td><td></td><td class="number ${{totalVarClass}}">${{totalVarText}}</td></tr></tfoot></table>`;
             }}
             container.innerHTML = html;
         }}
@@ -2097,6 +2102,11 @@ def _render_budget_section(data: DashboardData, currency: str) -> str:
     html += '</div>'  # Close budget-sections-grid
 
     # Category breakdown table - with mini progress bars
+    # Calculate totals
+    total_actual = sum(c.actual_amount for c in data.categories if c.actual_amount > 0)
+    total_planned = sum(c.planned_amount for c in data.categories if c.planned_amount)
+    total_variance = total_planned - total_actual if total_planned else Decimal(0)
+
     html += """
     <h2 class="section-title">Category Breakdown</h2>
     <table>
@@ -2147,8 +2157,19 @@ def _render_budget_section(data: DashboardData, currency: str) -> str:
             </tr>
         """
 
-    html += """
+    # Total row
+    total_var_class = "positive" if total_variance >= 0 else "negative"
+    total_var_text = f"+{_format_currency(total_variance, currency)}" if total_variance >= 0 else _format_currency(total_variance, currency)
+    html += f"""
         </tbody>
+        <tfoot>
+            <tr style="background:var(--bg-secondary);font-weight:600;">
+                <td>Total</td>
+                <td class="number">{_format_currency(total_actual, currency)}</td>
+                <td></td>
+                <td class="number {total_var_class}">{total_var_text}</td>
+            </tr>
+        </tfoot>
     </table>
     """
 
