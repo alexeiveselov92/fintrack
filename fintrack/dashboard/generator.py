@@ -304,7 +304,8 @@ def generate_dashboard_html(
             justify-content: space-between;
             align-items: center;
         }}
-        .header h1 {{ color: var(--primary); font-size: 1.5rem; }}
+        .header h1 {{ color: var(--text-primary); font-size: 1.5rem; font-weight: 600; }}
+        [data-theme="dark"] .header h1 {{ color: #f0f0f0; }}
         .header .meta {{ color: var(--text-secondary); font-size: 0.875rem; }}
 
         .tabs {{
@@ -1044,23 +1045,27 @@ def generate_dashboard_html(
             paper_bgcolor: paperBg,
             plot_bgcolor: plotBg,
             font: {{ color: textColor }},
+            autosize: true,
             xaxis: {{
                 gridcolor: gridColor,
                 linecolor: gridColor,
                 tickcolor: textColor,
                 zerolinecolor: gridColor,
+                automargin: true,
             }},
             yaxis: {{
                 gridcolor: gridColor,
                 linecolor: gridColor,
                 tickcolor: textColor,
                 zerolinecolor: gridColor,
+                automargin: true,
             }},
             legend: {{
                 bgcolor: 'rgba(0,0,0,0)',
                 font: {{ color: textColor }},
             }},
         }};
+        const plotlyConfig = {{ responsive: true, displayModeBar: false }};
 
         // Hover template helper for currency formatting
         const currencyHover = '%{{x}}<br>%{{fullData.name}}: ' + currencySymbol + '%{{y:,.2f}}<extra></extra>';
@@ -1072,7 +1077,7 @@ def generate_dashboard_html(
             {{ x: timelineLabels, y: timelineAvailable, name: 'Available', type: 'scatter', line: {{ color: '#8b5cf6', dash: 'dash' }}, hovertemplate: currencyHover }},
         ], {{
             ...plotlyLayout,
-            margin: {{ t: 20, r: 20, b: 80, l: 60 }},
+            margin: {{ t: 30, r: 30, b: 80, l: 50 }},
             legend: {{ orientation: 'h', y: 1.1, bgcolor: 'rgba(0,0,0,0)', font: {{ color: textColor }} }},
             xaxis: {{
                 ...plotlyLayout.xaxis,
@@ -1081,7 +1086,7 @@ def generate_dashboard_html(
                 type: 'category'
             }},
             yaxis: {{ ...plotlyLayout.yaxis, title: {{ text: 'Amount ({currency})', font: {{ color: textColor }} }} }},
-        }}, {{ responsive: true }});
+        }}, plotlyConfig);
 
         // Cash flow chart (with range slider)
         Plotly.newPlot('chart-cashflow', [
@@ -1091,7 +1096,7 @@ def generate_dashboard_html(
         ], {{
             ...plotlyLayout,
             barmode: 'relative',
-            margin: {{ t: 20, r: 20, b: 80, l: 60 }},
+            margin: {{ t: 30, r: 30, b: 80, l: 50 }},
             legend: {{ orientation: 'h', y: 1.1, bgcolor: 'rgba(0,0,0,0)', font: {{ color: textColor }} }},
             xaxis: {{
                 ...plotlyLayout.xaxis,
@@ -1100,7 +1105,7 @@ def generate_dashboard_html(
                 type: 'category'
             }},
             yaxis: {{ ...plotlyLayout.yaxis, title: {{ text: 'Amount ({currency})', font: {{ color: textColor }} }} }},
-        }}, {{ responsive: true }});
+        }}, plotlyConfig);
 
         // Treemap (moved before Sankey as per user request)
         const treemapHover = '%{{label}}<br>' + currencySymbol + '%{{value:,.2f}}<br>%{{percentRoot:.1%}}<extra></extra>';
@@ -1119,8 +1124,8 @@ def generate_dashboard_html(
             }},
         }}], {{
             ...plotlyLayout,
-            margin: {{ t: 20, r: 20, b: 20, l: 20 }},
-        }}, {{ responsive: true }});
+            margin: {{ t: 10, r: 10, b: 10, l: 10 }},
+        }}, plotlyConfig);
 
         // Sankey
         Plotly.newPlot('chart-sankey', [{{
@@ -1142,8 +1147,8 @@ def generate_dashboard_html(
             }},
         }}], {{
             ...plotlyLayout,
-            margin: {{ t: 20, r: 20, b: 20, l: 20 }},
-        }}, {{ responsive: true }});
+            margin: {{ t: 10, r: 10, b: 10, l: 10 }},
+        }}, plotlyConfig);
 
         // Expenses timeline (with range slider)
         Plotly.newPlot('chart-expenses-timeline', [
@@ -1152,7 +1157,7 @@ def generate_dashboard_html(
         ], {{
             ...plotlyLayout,
             barmode: 'stack',
-            margin: {{ t: 20, r: 20, b: 80, l: 60 }},
+            margin: {{ t: 30, r: 30, b: 80, l: 50 }},
             legend: {{ orientation: 'h', y: 1.1, bgcolor: 'rgba(0,0,0,0)', font: {{ color: textColor }} }},
             xaxis: {{
                 ...plotlyLayout.xaxis,
@@ -1161,7 +1166,7 @@ def generate_dashboard_html(
                 type: 'category'
             }},
             yaxis: {{ ...plotlyLayout.yaxis, title: {{ text: 'Expenses ({currency})', font: {{ color: textColor }} }} }},
-        }}, {{ responsive: true }});
+        }}, plotlyConfig);
 
         // Deductions timeline (dual Y-axis: amount and percentage)
         Plotly.newPlot('chart-deductions-timeline', [
@@ -1187,7 +1192,7 @@ def generate_dashboard_html(
             }},
         ], {{
             ...plotlyLayout,
-            margin: {{ t: 20, r: 60, b: 80, l: 60 }},
+            margin: {{ t: 30, r: 50, b: 80, l: 50 }},
             legend: {{ orientation: 'h', y: 1.1, bgcolor: 'rgba(0,0,0,0)', font: {{ color: textColor }} }},
             xaxis: {{
                 ...plotlyLayout.xaxis,
@@ -1210,7 +1215,7 @@ def generate_dashboard_html(
                 tickfont: {{ color: textColor }},
                 titlefont: {{ color: textColor }}
             }},
-        }}, {{ responsive: true }});
+        }}, plotlyConfig);
 
         // Savings timeline (with range slider)
         Plotly.newPlot('chart-savings-timeline', [
@@ -1218,7 +1223,7 @@ def generate_dashboard_html(
             {{ x: timelineLabels, y: timelineTarget, name: 'Target', type: 'scatter', line: {{ color: '#ef4444', dash: 'dash' }}, hovertemplate: currencyHover }},
         ], {{
             ...plotlyLayout,
-            margin: {{ t: 20, r: 20, b: 80, l: 60 }},
+            margin: {{ t: 30, r: 30, b: 80, l: 50 }},
             legend: {{ orientation: 'h', y: 1.1, bgcolor: 'rgba(0,0,0,0)', font: {{ color: textColor }} }},
             xaxis: {{
                 ...plotlyLayout.xaxis,
@@ -1227,7 +1232,7 @@ def generate_dashboard_html(
                 type: 'category'
             }},
             yaxis: {{ ...plotlyLayout.yaxis, title: {{ text: 'Cumulative Savings ({currency})', font: {{ color: textColor }} }} }},
-        }}, {{ responsive: true }});
+        }}, plotlyConfig);
 
         // Transactions with pagination and sorting
         const transactionsData = {json.dumps(transactions_data)};
