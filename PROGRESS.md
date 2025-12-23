@@ -1,10 +1,40 @@
 # FinTrack - Progress Report
 
 ## Current State
-**Phase**: Dashboard Improvements (v0.3.5)
+**Phase**: Dashboard Improvements (v0.3.19)
 **Status**: Released
 **Last Updated**: 2025-12-23
-**Current Version**: 0.3.5
+**Current Version**: 0.3.19
+
+## What's New in v0.3.19
+
+### Budget Tab Restructure
+- **Unified Income Block** - Merged Income, Deductions, and Fixed Expenses into one section:
+  - Gross Income bar with Cash on Hand at top level
+  - Deductions as nested subsection (with category breakdown)
+  - Fixed Expenses as nested subsection (with category breakdown)
+- **Clean 3-block layout** - Budget tab now shows: Income, Flexible Spending, Savings
+- New CSS for `.budget-subsection` styling
+
+---
+
+## What's New in v0.3.18
+
+### Budget Tab Improvements
+- **Budget tab moved to 2nd position** (after Overview) - more prominent placement
+- **Cash on Hand** added to Income block - shows Balance minus Savings
+- **Remaining** indicator added to Flexible Spending block
+
+---
+
+## What's New in v0.3.17
+
+### Dashboard Consistency Update
+- **Hover effects** added to all card-like elements (.card, .coverage-indicator, .section-block, .cash-reconciliation, .filter-summary)
+- **Table row hover** effect for all tables
+- **Standardized status terminology** across tabs
+
+---
 
 ## What's New in v0.3.5
 
