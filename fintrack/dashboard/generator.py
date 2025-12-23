@@ -667,6 +667,31 @@ def generate_dashboard_html(
         .flag.deduction {{ background: #fef3c7; color: #92400e; }}
         .flag.fixed {{ background: #f3e8ff; color: #6b21a8; }}
 
+        .mini-progress {{
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }}
+        .mini-progress-bar {{
+            width: 80px;
+            height: 8px;
+            background: var(--bg-secondary);
+            border-radius: 4px;
+            overflow: hidden;
+        }}
+        .mini-progress-fill {{
+            height: 100%;
+            border-radius: 4px;
+        }}
+        .mini-progress-fill.ok {{ background: var(--success-color); }}
+        .mini-progress-fill.warning {{ background: var(--warning-color); }}
+        .mini-progress-fill.danger {{ background: var(--danger-color); }}
+        .mini-progress-pct {{
+            font-size: 0.8rem;
+            min-width: 45px;
+            color: var(--text-secondary);
+        }}
+
         .pagination {{
             display: flex;
             gap: 0.5rem;
@@ -1788,14 +1813,28 @@ def _get_period_switch_js(currency: str) -> str:
                 html += `<div class="budget-cumulative"><span class="cumulative-label">Cumulative:</span><span class="cumulative-value">${{formatCurrency(cumSavings)}}</span><span class="cumulative-label">vs target</span><span class="cumulative-value">${{formatCurrency(cumTarget)}}</span><span class="cumulative-value ${{cumDiffClass}}">(${{cumDiffText}})</span></div></div>`;
             }}
             html += '</div>';
-            // Category breakdown
+            // Category breakdown with mini progress bars
             if (data.categories && data.categories.length > 0) {{
-                html += '<h2 class="section-title">Category Breakdown</h2><table><thead><tr><th>Category</th><th class="number">Actual</th><th class="number">%</th><th class="number">Planned</th><th class="number">%</th><th class="number">Variance</th><th class="number">Var %</th></tr></thead><tbody>';
+                html += '<h2 class="section-title">Category Breakdown</h2><table><thead><tr><th>Category</th><th class="number">Actual</th><th>vs Plan</th><th class="number">Variance</th></tr></thead><tbody>';
                 data.categories.forEach(cat => {{
-                    const varClass = cat.variance !== null ? (cat.variance > 0 ? 'positive' : (cat.variance < 0 ? 'negative' : '')) : '';
-                    const varText = cat.variance !== null ? (cat.variance > 0 ? '+' : '') + formatCurrency(cat.variance) : '-';
-                    const varPctText = cat.variance_pct !== null ? (cat.variance_pct > 0 ? '+' : '') + cat.variance_pct.toFixed(1) + '%' : '-';
-                    html += `<tr><td>${{cat.category}}${{cat.is_fixed ? ' <span class="flag fixed">Fixed</span>' : ''}}</td><td class="number">${{formatCurrency(cat.actual)}}</td><td class="number">${{cat.actual_pct.toFixed(1)}}%</td><td class="number">${{cat.planned !== null ? formatCurrency(cat.planned) : '-'}}</td><td class="number">${{cat.planned !== null ? cat.planned_pct.toFixed(1) + '%' : '-'}}</td><td class="number ${{varClass}}">${{varText}}</td><td class="number ${{varClass}}">${{varPctText}}</td></tr>`;
+                    let progressHtml = '-';
+                    if (cat.planned !== null && cat.planned > 0) {{
+                        const pct = cat.actual / cat.planned * 100;
+                        const barWidth = Math.min(pct, 100);
+                        const barClass = pct > 100 ? 'danger' : (pct >= 90 ? 'warning' : 'ok');
+                        progressHtml = `<div class="mini-progress"><div class="mini-progress-bar"><div class="mini-progress-fill ${{barClass}}" style="width:${{barWidth}}%"></div></div><span class="mini-progress-pct">${{pct.toFixed(0)}}%</span></div>`;
+                    }}
+                    let varianceHtml = '-';
+                    if (cat.variance !== null && cat.planned !== null) {{
+                        if (cat.variance > 0) {{
+                            varianceHtml = `<span class="positive">+${{formatCurrency(cat.variance)}}</span> <span class="status-badge ok">✓</span>`;
+                        }} else if (cat.variance < 0) {{
+                            varianceHtml = `<span class="negative">${{formatCurrency(cat.variance)}}</span> <span class="status-badge danger">✗</span>`;
+                        }} else {{
+                            varianceHtml = formatCurrency(0);
+                        }}
+                    }}
+                    html += `<tr><td>${{cat.category}}${{cat.is_fixed ? ' <span class="flag fixed">Fixed</span>' : ''}}</td><td class="number">${{formatCurrency(cat.actual)}}</td><td>${{progressHtml}}</td><td class="number">${{varianceHtml}}</td></tr>`;
                 }});
                 html += '</tbody></table>';
             }}
@@ -2057,10 +2096,7 @@ def _render_budget_section(data: DashboardData, currency: str) -> str:
 
     html += '</div>'  # Close budget-sections-grid
 
-    # Category breakdown table - with percentages
-    total_actual = sum(c.actual_amount for c in data.categories if c.actual_amount > 0)
-    total_planned = sum(c.planned_amount for c in data.categories if c.planned_amount)
-
+    # Category breakdown table - with mini progress bars
     html += """
     <h2 class="section-title">Category Breakdown</h2>
     <table>
@@ -2068,11 +2104,8 @@ def _render_budget_section(data: DashboardData, currency: str) -> str:
             <tr>
                 <th>Category</th>
                 <th class="number">Actual</th>
-                <th class="number">%</th>
-                <th class="number">Planned</th>
-                <th class="number">%</th>
+                <th>vs Plan</th>
                 <th class="number">Variance</th>
-                <th class="number">Var %</th>
             </tr>
         </thead>
         <tbody>
@@ -2082,37 +2115,35 @@ def _render_budget_section(data: DashboardData, currency: str) -> str:
         if cat.actual_amount == 0 and not cat.planned_amount:
             continue
 
-        # Calculate percentages
-        actual_pct = float(cat.actual_amount / total_actual * 100) if total_actual > 0 else 0
-        planned_pct = float(cat.planned_amount / total_planned * 100) if cat.planned_amount and total_planned > 0 else 0
-
-        # Variance
-        variance_class = ""
-        variance_text = "-"
-        variance_pct_text = "-"
-        if cat.variance_vs_plan is not None:
-            var_pct = float(cat.variance_vs_plan / cat.planned_amount * 100) if cat.planned_amount else 0
-            if cat.variance_vs_plan > 0:
-                variance_class = "positive"
-                variance_text = f"+{_format_currency(cat.variance_vs_plan, currency)}"
-                variance_pct_text = f"+{var_pct:.1f}%"
-            elif cat.variance_vs_plan < 0:
-                variance_class = "negative"
-                variance_text = _format_currency(cat.variance_vs_plan, currency)
-                variance_pct_text = f"{var_pct:.1f}%"
+        # Progress bar for actual vs planned
+        progress_html = "-"
+        if cat.planned_amount and cat.planned_amount > 0:
+            pct = float(cat.actual_amount / cat.planned_amount * 100)
+            bar_width = min(pct, 100)
+            if pct > 100:
+                bar_class = "danger"
+            elif pct >= 90:
+                bar_class = "warning"
             else:
-                variance_text = _format_currency(Decimal(0), currency)
-                variance_pct_text = "0.0%"
+                bar_class = "ok"
+            progress_html = f'''<div class="mini-progress"><div class="mini-progress-bar"><div class="mini-progress-fill {bar_class}" style="width:{bar_width}%"></div></div><span class="mini-progress-pct">{pct:.0f}%</span></div>'''
+
+        # Variance with status badge
+        variance_html = "-"
+        if cat.variance_vs_plan is not None and cat.planned_amount:
+            if cat.variance_vs_plan > 0:
+                variance_html = f'<span class="positive">+{_format_currency(cat.variance_vs_plan, currency)}</span> <span class="status-badge ok">✓</span>'
+            elif cat.variance_vs_plan < 0:
+                variance_html = f'<span class="negative">{_format_currency(cat.variance_vs_plan, currency)}</span> <span class="status-badge danger">✗</span>'
+            else:
+                variance_html = f'{_format_currency(Decimal(0), currency)}'
 
         html += f"""
             <tr>
                 <td>{cat.category}{' <span class="flag fixed">Fixed</span>' if cat.is_fixed else ''}</td>
                 <td class="number">{_format_currency(cat.actual_amount, currency)}</td>
-                <td class="number">{actual_pct:.1f}%</td>
-                <td class="number">{_format_currency(cat.planned_amount, currency) if cat.planned_amount else '-'}</td>
-                <td class="number">{f'{planned_pct:.1f}%' if cat.planned_amount else '-'}</td>
-                <td class="number {variance_class}">{variance_text}</td>
-                <td class="number {variance_class}">{variance_pct_text}</td>
+                <td>{progress_html}</td>
+                <td class="number">{variance_html}</td>
             </tr>
         """
 
